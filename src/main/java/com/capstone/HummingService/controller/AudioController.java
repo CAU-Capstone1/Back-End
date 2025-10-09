@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/audio")
+@RequestMapping("/api")
 public class AudioController {
 
     private final AudioService audioService;
