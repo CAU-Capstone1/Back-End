@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 @RestController
-@RequestMapping("/compose")
+@RequestMapping("/api/compose")
 public class ProcessController {
 
         private final ProcessService processService;
