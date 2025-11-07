@@ -35,9 +35,15 @@ public class SecurityConfig {
                                 "/callback/**",
                                 "/jobs/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+
+
+                                "/api/upload",
+                                "/api/compose/full-upload",
+                                "/api/compose"
                         ).permitAll()
 
+                        // 일반 API 경로는 인증 필요
                         .requestMatchers("/api/**").authenticated()
 
                         .anyRequest().permitAll()
