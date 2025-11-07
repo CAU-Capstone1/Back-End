@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "jobs",
         indexes = {
                 @Index(name = "idx_job_process", columnList = "processId"),
+                @Index(name = "idx_job_user", columnList = "userId") // ⭐ 인덱스 추가 (사용자별 작업 조회용)
         })
 public class Job {
 
@@ -17,7 +18,11 @@ public class Job {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String publicJobId; //외부적으로 공개할 아이디
+    private String publicJobId; // 외부적으로 공개할 아이디
+
+    // 이 작업을 요청한 사용자의 ID
+    @Column(nullable = false)
+    private Long userId;
 
     @Column(nullable = false)
     private Long processId;
@@ -71,6 +76,14 @@ public class Job {
         this.publicJobId = publicJobId;
     }
 
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
     public Long getProcessId() {
         return processId;
     }
@@ -94,7 +107,6 @@ public class Job {
     public void setProgress(double progress) {
         this.progress = progress;
     }
-
 
     public Long getOutputAudioId() {
         return outputAudioId;

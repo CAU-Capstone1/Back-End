@@ -22,7 +22,6 @@ public class CallbackController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> handle(@Valid @RequestBody CallbackRequest request) {
-        // TODO: request.signature 검증 (HMAC 등)
         callbackService.handleCallback(request);
         return ResponseEntity.ok().build();
     }

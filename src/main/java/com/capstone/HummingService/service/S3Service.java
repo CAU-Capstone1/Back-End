@@ -1,47 +1,60 @@
 package com.capstone.HummingService.service;
 
-// ✅ V1 Import만 사용
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-// ❌ V2 관련 Import (software.amazon.awssdk.*)는 모두 삭제
-
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
-import com.amazonaws.services.s3.model.PutObjectRequest; // V1에서도 PutObjectRequest 사용 가능
 
 @Service
 public class S3Service {
 
-    private final AmazonS3 s3Client; // V1 클라이언트
+    private final S3Client s3Client;
+    private final String bucketName;
 
-    @Value("${cloud.aws.s3.bucket}")
-    private String bucket;
+    public S3Service(@Qualifier("s3Client") S3Client s3Client,
 
-    public S3Service(AmazonS3 s3Client) {
+                     @Value("${spring.cloud.aws.s3.bucket}") String bucketName) {
         this.s3Client = s3Client;
+        this.bucketName = bucketName;
     }
 
-    // 파일 업로드 메서드 로직 (스크린샷 기반 V1 로직)
-    public String uploadFile(MultipartFile file, String folderName) throws IOException {
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || originalFilename.isEmpty()) {
-            throw new IllegalArgumentException("파일 이름이 없습니다.");
+    public String uploadFile(MultipartFile file, String directory) throws IOException {
+
+        String s3Key;
+
+        if (s3Client == null) {
+            s3Key = "/local/path/to/" + directory + "/" + file.getOriginalFilename();
+            return s3Key;
         }
 
-        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String s3Key = folderName + "/" + UUID.randomUUID().toString() + extension;
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = originalFilename != null && originalFilename.contains(".") ?
+                originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+        s3Key = directory + "/" + UUID.randomUUID().toString() + fileExtension;
 
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentType(file.getContentType());
-        metadata.setContentLength(file.getSize());
+        try (InputStream inputStream = file.getInputStream()) {
 
-        // V1 putObject 호출
-        s3Client.putObject(bucket, s3Key, file.getInputStream(), metadata);
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentLength(file.getSize())
+                    .contentType(file.getContentType())
+                    .build();
 
-        return s3Key;
+            s3Client.putObject(putObjectRequest,
+                    RequestBody.fromInputStream(inputStream, file.getSize()));
+
+            return s3Key;
+        } catch (IOException e) {
+            throw new IOException("S3 파일 업로드 중 IO 오류 발생: " + e.getMessage(), e);
+        }
     }
 }

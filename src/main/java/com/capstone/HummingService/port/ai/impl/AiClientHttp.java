@@ -6,8 +6,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List; // ⭐ 새로 추가
+import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Component
 public class AiClientHttp implements AiClientPort {
@@ -18,34 +19,35 @@ public class AiClientHttp implements AiClientPort {
         this.aiWebClient = aiWebClient;
     }
 
+
     @Override
-    public void compose(
-            String publicJobId,
-            String hummingPath,
-            String imagePath, // ⭐ 추가
-            String genre,     // ⭐ 추가
-            Integer durationSec, // ⭐ 추가
-            String keyInfo,   // ⭐ 추가
-            String tempoInfo, // ⭐ 추가
-            List<String> instruments, // ⭐ 추가
-            String prompt     // ⭐ 추가
+    public void composeWithSongForm(
+                                     String publicJobId,
+                                     List<String> hummingPaths,
+                                     List<String> songForm,
+                                     String imagePath,
+                                     String genre,
+                                     Integer durationSec,
+                                     String keyInfo,
+                                     String tempoInfo,
+                                     List<String> instruments,
+                                     String prompt
     ) {
-        // AI 서버로 전송할 JSON 본문 (Map) 구성
-        Map<String, Object> body = Map.of(
-                "jobId", publicJobId,
-                "hummingPath", hummingPath,
-                "imagePath", imagePath, // ⭐ 이미지 경로 추가
+        Map<String, Object> body = new HashMap<>();
 
-                // ⭐ 6가지 음악적 요소 및 프롬프트 추가
-                "genre", genre,
-                "durationSec", durationSec,
-                "keyInfo", keyInfo,
-                "tempoInfo", tempoInfo,
-                "instruments", instruments,
-                "prompt", prompt,
+        body.put("jobId", publicJobId);
+        body.put("hummingPaths", hummingPaths);
+        body.put("songForm", songForm);
+        body.put("imagePath", imagePath);
 
-                "callbackUrl", "http://localhost:8080/callback" // 콜백 URL은 유지
-        );
+        body.put("genre", genre);
+        body.put("durationSec", durationSec);
+        body.put("keyInfo", keyInfo);
+        body.put("tempoInfo", tempoInfo);
+        body.put("instruments", instruments);
+        body.put("prompt", prompt);
+
+        body.put("callbackUrl", "http://localhost:8080/callback");
 
         aiWebClient.post()
                 .uri("/compose")

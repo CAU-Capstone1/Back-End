@@ -14,7 +14,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
-import java.util.stream.Collectors; // List 처리용
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProcessService {
@@ -38,55 +39,64 @@ public class ProcessService {
         this.audioService = audioService;
     }
 
-    /**
-     * ✅ 새로운 주력 메소드: 파일 업로드 및 6가지 음악적 요소 처리
-     * 클라이언트로부터 받은 파일과 메타데이터를 처리하고 AI 모듈에 작곡을 요청합니다.
-     */
     @Transactional
-    public ComposeResponse composeFull(
-            MultipartFile hummingFile,
-            MultipartFile imageFile,
-            ComposeRequest composeRequest
-    ) {
-        String hummingPath;
+    public ComposeResponse composeWithSongForm(ComposeRequest request, Long userId) {
+
+        // 1. 다중 허밍 파일 및 이미지 파일 저장 및 경로 획득
+        List<String> hummingPaths;
         String imagePath = null;
 
         try {
-            // 1. S3 (또는 임시 로컬 저장소)에 파일 저장 및 경로 획득
-            hummingPath = audioService.saveAudio(hummingFile);
+            // 1-1. 다중 허밍 파일 순서대로 저장
+            hummingPaths = request.getHummingFiles().stream()
+                    .map(file -> {
+                        try {
+                            // saveAudio는 IOException을 던지므로 RuntimeException으로 감싸서 처리
+                            return audioService.saveAudio(file);
+                        } catch (IOException e) {
+                            throw new RuntimeException("허밍 파일 저장 중 오류가 발생했습니다.", e);
+                        }
+                    })
+                    .collect(Collectors.toList());
 
-            if (imageFile != null && !imageFile.isEmpty()) {
-                imagePath = audioService.saveImage(imageFile);
+            // 1-2. 이미지 파일 저장 (선택적)
+            if (request.getImageFile() != null && !request.getImageFile().isEmpty()) {
+                // saveImage가 던질 수 있는 IOException은 아래 catch 블록에서 처리
+                imagePath = audioService.saveImage(request.getImageFile());
             }
+
         } catch (IOException e) {
-            // 파일 업로드 실패 시 예외 처리
-            throw new RuntimeException("파일 저장 중 오류가 발생했습니다: " + e.getMessage(), e);
+            throw new RuntimeException("파일 저장 중 입출력 오류가 발생했습니다.", e);
+        } catch (RuntimeException e) {
+            // Stream.map에서 발생한 런타임 예외를 다시 던짐
+            throw e;
         }
 
         // 2. ComposeProcess 생성 및 모든 데이터 매핑
         ComposeProcess composeProcess = new ComposeProcess();
         composeProcess.setAudioId(null);
 
-        // 파일 경로 저장
-        composeProcess.setHummingPath(hummingPath);
+        // 사용자 ID 연결 (로그인 기능 반영)
+        composeProcess.setUserId(userId);
+
+        composeProcess.setHummingPath(String.join(",", hummingPaths));
         composeProcess.setImagePath(imagePath);
+        composeProcess.setSongFormInfo(String.join(",", request.getSongForm()));
 
-        // 6가지 음악적 요소 저장
-        composeProcess.setGenre(composeRequest.genre());
-        composeProcess.setDurationSec(composeRequest.durationSec());
-        composeProcess.setKeyInfo(composeRequest.key());
-        composeProcess.setTempoInfo(composeRequest.tempo());
+        // 음악 설정
+        composeProcess.setGenre(request.getGenre());
+        composeProcess.setDurationSec(request.getDurationSec());
+        composeProcess.setKeyInfo(request.getKey());
+        composeProcess.setTempoInfo(request.getTempo());
 
-        // List<String>인 instruments를 쉼표 구분 문자열로 변환하여 DB에 저장
-        if (composeRequest.instruments() != null) {
-            composeProcess.setInstruments(String.join(",", composeRequest.instruments()));
+        if (request.getInstruments() != null) {
+            composeProcess.setInstruments(String.join(",", request.getInstruments()));
         }
 
-        // 텍스트 프롬프트 저장
-        composeProcess.setPrompt(composeRequest.imagePrompt());
+        // composeProcess.setPrompt(request.getPrompt()); // DTO에 필드 유무에 따라 사용
 
         composeProcess.setStatus(ProcessStatus.CREATED);
-        composeProcessRepository.save(composeProcess); // Process를 DB에 저장
+        composeProcessRepository.save(composeProcess);
 
         // 3. Job 생성 (AI 작업 요청 건)
         Job job = new Job();
@@ -94,6 +104,9 @@ public class ProcessService {
         job.setProcessId(composeProcess.getId());
         job.setStatus(JobStatus.QUEUED);
         job.setProgress(0.0);
+
+        // Job에도 사용자 ID 연결
+        job.setUserId(userId);
         jobRepository.save(job);
 
         // Process에 최종 Job ID 연결 및 저장
@@ -101,16 +114,17 @@ public class ProcessService {
         composeProcessRepository.save(composeProcess);
 
         // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송
-        aiClient.compose(
+        aiClient.composeWithSongForm(
                 job.getPublicJobId(),
-                hummingPath,  // S3 Key 전달
-                imagePath,    // 이미지 S3 Key 전달 (null 가능)
-                composeRequest.genre(),
-                composeRequest.durationSec(),
-                composeRequest.key(),
-                composeRequest.tempo(),
-                composeRequest.instruments(), // List<String> 형태로 전달 (AiClientPort에서 처리)
-                composeRequest.imagePrompt()
+                hummingPaths,
+                request.getSongForm(),
+                imagePath,
+                request.getGenre(),
+                request.getDurationSec(),
+                request.getKey(),
+                request.getTempo(),
+                request.getInstruments(),
+                "" // prompt 인자 (DTO에 없으므로 빈 문자열 전달)
         );
 
         // 5. 클라이언트에 작업 상태 응답 반환
