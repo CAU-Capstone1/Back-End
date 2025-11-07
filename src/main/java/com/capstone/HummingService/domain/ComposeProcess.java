@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "compose_processes",
         indexes = {
-                @Index(name = "idx_cp_audio",  columnList = "audioId")
+                @Index(name = "idx_cp_audio",  columnList = "audioId"),
+                @Index(name = "idx_cp_user",  columnList = "userId") // ⭐ 인덱스 추가 (조회 효율)
         })
 public class ComposeProcess {
 
@@ -19,26 +20,33 @@ public class ComposeProcess {
     // AI가 생성한 최종 결과물 Audio ID
     private Long audioId;
 
-    // ✅ 파일 경로 필드 추가 (S3 Key 저장용)
+    // 이 요청을 생성한 사용자의 ID
+    @Column(nullable = false)
+    private Long userId;
+
+    // 다중 허밍 파일 경로
     @Column(nullable = false)
     private String hummingPath;
 
-    private String imagePath; // 선택적 이미지 파일 경로 (Nullable)
+    // 사용자가 선택한 곡 구조 순서 정보
+    @Lob
+    private String songFormInfo;
 
-    // ❌ 기존 style, mood 제거하고 6가지 요소 추가
+    private String imagePath;
+
     @Column(length = 50)
     private String genre;
 
-    private Integer durationSec; // 길이 (초)
+    private Integer durationSec; // 길이
 
     @Column(length = 30)
-    private String keyInfo; // 키 정보 (C Major, 밝은 계열 등)
+    private String keyInfo; // 키 정보
 
     @Column(length = 30)
-    private String tempoInfo; // 템포 정보 (빠르게, 120BPM 등)
+    private String tempoInfo; // 템포 정보
 
-    @Lob // 길이가 길어질 수 있는 문자열 저장 (DB의 TEXT 타입에 해당)
-    private String instruments; // 악기 목록 (JSON 또는 쉼표 구분 문자열로 저장)
+    @Lob
+    private String instruments; // 악기 목록
 
     @Column(columnDefinition = "TEXT") // 텍스트 프롬프트 저장
     private String prompt;
@@ -56,8 +64,6 @@ public class ComposeProcess {
 
     private LocalDateTime updateTime;
 
-    // --- Life Cycle Hooks ---
-
     @PrePersist
     protected void onCreate() {
         if (this.status == null) {
@@ -72,7 +78,6 @@ public class ComposeProcess {
         this.updateTime = LocalDateTime.now();
     }
 
-    // --- Getter and Setter ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -80,14 +85,18 @@ public class ComposeProcess {
     public Long getAudioId() { return audioId; }
     public void setAudioId(Long audioId) { this.audioId = audioId; }
 
-    // ✅ S3 경로 Getter/Setter
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+
     public String getHummingPath() { return hummingPath; }
     public void setHummingPath(String hummingPath) { this.hummingPath = hummingPath; }
+
+    public String getSongFormInfo() { return songFormInfo; }
+    public void setSongFormInfo(String songFormInfo) { this.songFormInfo = songFormInfo; }
 
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
-    // ✅ 6가지 음악 요소 Getter/Setter
     public String getGenre() { return genre; }
     public void setGenre(String genre) { this.genre = genre; }
 
@@ -106,7 +115,6 @@ public class ComposeProcess {
     public String getPrompt() { return prompt; }
     public void setPrompt(String prompt) { this.prompt = prompt; }
 
-    // 기존 필드 유지
     public ProcessStatus getStatus() { return status; }
     public void setStatus(ProcessStatus status) { this.status = status; }
 

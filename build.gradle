@@ -1,7 +1,7 @@
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.6'
-	id 'io.spring.dependency-management' version '1.1.7'
+	id 'io.spring.dependency-management' version '1.1.7' // BOM 관리를 위한 필수 플러그인
 }
 
 group = 'com.capstone'
@@ -16,18 +16,42 @@ java {
 
 repositories {
 	mavenCentral()
+	// AWS SDK V2 모듈 검색을 보장하기 위한 저장소 설정
+	google()
+	maven { url "https://repo.maven.apache.org/maven2/" }
+}
+
+// 의존성 관리 블록: AWS SDK V2 버전 통일을 위해 BOM 적용
+dependencyManagement {
+	imports {
+		mavenBom "io.awspring.cloud:spring-cloud-aws-dependencies:3.0.0"
+	}
 }
 
 dependencies {
+	// Spring Boot Starters
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
-	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.72'
+
+	// AWS Cloud Integration (Starter가 V2 SDK를 관리합니다)
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter:3.0.0'
 
+	// S3Client 사용을 위한 명시적 V2 모듈 (BOM이 버전을 결정함)
+	implementation 'software.amazon.awssdk:s3'
+
+	// JWT (JSON Web Token)
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+	implementation 'org.mockito:mockito-core:5.11.0'
+	// Database
 	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// Test Dependencies
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

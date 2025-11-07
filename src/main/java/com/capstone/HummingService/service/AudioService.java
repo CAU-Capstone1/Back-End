@@ -22,16 +22,12 @@ public class AudioService {
             throw new IllegalArgumentException("mp3 파일만 업로드할 수 있습니다.");
         }
 
-        // ⭐ S3Service의 uploadFile 메서드 사용
         String audioPath = s3Service.uploadFile(file, "humming");
         return audioPath;
     }
 
-    // ⭐ 이미지 저장을 위한 새 메소드 추가 (선택 사항)
     public String saveImage(MultipartFile file) throws IOException {
-        // 이미지 파일 검증 로직 추가 가능 (예: .jpg, .png 등)
 
-        // ⭐ S3Service의 uploadFile 메서드 사용
         String imagePath = s3Service.uploadFile(file, "image");
         return imagePath;
     }

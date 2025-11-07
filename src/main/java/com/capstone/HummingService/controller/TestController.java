@@ -8,6 +8,6 @@ public class TestController {
 
     @GetMapping("/api/test")
     public String testConnection() {
-        return "✅ Front ↔ Back 연결 성공!";
+        return "Front ↔ Back 연결 성공!";
     }
 }
