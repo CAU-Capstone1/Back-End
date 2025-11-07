@@ -36,7 +36,7 @@ public class ComposeRequest {
         @NotBlank(message = "템포 정보를 선택해 주세요.")
         private String tempo;
 
-        @NotNull(message = "사용할 악기를 최소 하나 이상 선택해 주세요.")
+        //@NotNull(message = "사용할 악기를 최소 하나 이상 선택해 주세요.")
         private List<String> instruments;
 
 
