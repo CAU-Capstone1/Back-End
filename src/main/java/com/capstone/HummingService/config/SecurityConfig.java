@@ -1,8 +1,10 @@
 package com.capstone.HummingService.config;
 
+import com.capstone.HummingService.service.UserDetailsServiceCustom;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,9 +18,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserDetailsServiceCustom userDetailsServiceCustom;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, UserDetailsServiceCustom userDetailsServiceCustom) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.userDetailsServiceCustom = userDetailsServiceCustom;
     }
 
     @Bean
@@ -68,5 +72,14 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    // 인증 제공자(Authentication Provider)를 명시적으로 정의하여 비밀번호 인코더를 설정
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsServiceCustom);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
     }
 }

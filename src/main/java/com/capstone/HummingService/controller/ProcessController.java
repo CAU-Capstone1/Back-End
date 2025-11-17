@@ -6,13 +6,11 @@ import com.capstone.HummingService.dto.response.ComposeResponse;
 import com.capstone.HummingService.repository.UserRepository;
 import com.capstone.HummingService.service.ProcessService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/compose")
@@ -20,22 +18,23 @@ public class ProcessController {
 
     private final ProcessService processService;
     private final UserRepository userRepository;
+
     public ProcessController(ProcessService processService, UserRepository userRepository) {
         this.processService = processService;
         this.userRepository = userRepository;
     }
 
 
-    @PostMapping(path = "/full-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ComposeResponse> composeWithUpload(
-            @Valid @ModelAttribute ComposeRequest request,
+    /**
+     * AI 작곡 요청을 처리합니다. (파일 경로/ID를 JSON Body로 받음)
+     * 프론트엔드에서 이미 오디오 파일을 서버에 업로드하고 받은 경로(String)를 사용합니다.
+     */
+    @PostMapping(path = "", consumes = MediaType.APPLICATION_JSON_VALUE) // JSON 요청으로 변경
+    public ResponseEntity<ComposeResponse> composeWithPaths(
+            @Valid @RequestBody ComposeRequest request, // @RequestBody로 변경
             @AuthenticationPrincipal UserDetails principal
     ) {
-        if (request.getHummingFiles() == null || request.getSongForm() == null ||
-                request.getHummingFiles().size() != request.getSongForm().size() ||
-                request.getHummingFiles().stream().anyMatch(MultipartFile::isEmpty)) {
-            return ResponseEntity.badRequest().build();
-        }
+        // MultipartFile 관련 유효성 검사 로직은 DTO의 @NotNull/@NotBlank 검사로 대체되므로 제거
 
         String username = principal.getUsername();
         User user = userRepository.findByUsername(username)
