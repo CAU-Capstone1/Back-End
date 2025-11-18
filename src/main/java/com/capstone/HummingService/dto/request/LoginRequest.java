@@ -20,6 +20,12 @@ public class LoginRequest {
     public LoginRequest() {
     }
 
+    // 🚨 [추가] 필드 초기화를 위한 생성자 추가 🚨
+    public LoginRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
     // [수정] getUsername/setUsername 대신 getEmail/setEmail 사용
     public String getEmail() {
         return email;
