@@ -51,7 +51,7 @@ public class AuthService {
         // 2. 비밀번호 인코딩
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        // 3. 🚨 [수정] User 엔티티 생성: Builder 대신 생성자 호출 방식으로 변경
+        // 3. User 엔티티 생성
         User user = new User(
                 request.getEmail(),     // email
                 usernameToUse,          // username (email과 동일)
