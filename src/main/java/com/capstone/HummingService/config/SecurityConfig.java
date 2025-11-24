@@ -75,19 +75,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ⚠️ [필수 변경] 프론트엔드가 실행되는 도메인을 여기에 추가해야 합니다.
-        // 임시로 로컬 개발 주소를 모두 허용합니다.
+        // ⚠️ [수정 완료] "*"를 제거하고 필요한 주소만 명시합니다.
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",      // React/Vue/Angular 기본
-                "http://127.0.0.1:3000",
-                "http://localhost:5173",      // Vite 기본
-                "http://[EC2_공인_IP]",       // 프론트엔드가 EC2에서 직접 서빙될 경우 EC2 IP
-                "*" // 💡 개발 완료 후에는 이 '모든 허용'(*)을 제거하고 특정 주소만 남겨야 합니다.
+                "http://localhost:5173",      // 프론트엔드 로컬 개발 주소 (필수)
+                "http://127.0.0.1:5173",
+                "http://13.209.6.126"        // 백엔드 EC2 공인 IP 주소 (혹시 모를 직접 접속용)
+                // "*" 제거 완료
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*")); // 모든 헤더 허용
-        configuration.setAllowCredentials(true); // JWT와 같은 자격 증명(쿠키, 인증 헤더) 허용
+        configuration.setAllowCredentials(true); // JWT와 같은 자격 증명(토큰) 허용
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // 모든 경로("/**")에 이 CORS 설정을 적용합니다.
