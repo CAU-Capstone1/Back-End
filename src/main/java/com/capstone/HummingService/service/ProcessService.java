@@ -79,7 +79,8 @@ public class ProcessService {
         composeProcess.setImagePath(imagePath);
 
         // 음악 설정 (프론트 DTO 필드명에 맞추어 매핑)
-        composeProcess.setGenre(request.getStyle()); // DTO: style -> DB: genre
+        composeProcess.setStyle(request.getStyle()); // DTO: style -> DB: genre
+        composeProcess.setMood(request.getMood());
         composeProcess.setDurationSec(durationSec); // 변환된 Integer 값 저장
         composeProcess.setKeyInfo(request.getKey());
         composeProcess.setTempoInfo(request.getTempo());
