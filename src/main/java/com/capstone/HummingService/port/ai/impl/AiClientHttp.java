@@ -69,7 +69,7 @@ public class AiClientHttp implements AiClientPort {
 
 
         aiWebClient.post()
-                .uri("/compose")
+                .uri("/generate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .retrieve()
