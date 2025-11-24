@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "compose_processes",
         indexes = {
                 @Index(name = "idx_cp_audio",  columnList = "audioId"),
-                @Index(name = "idx_cp_user",  columnList = "userId") // ⭐ 인덱스 추가 (조회 효율)
+                @Index(name = "idx_cp_user",  columnList = "userId")
         })
 public class ComposeProcess {
 
@@ -35,7 +35,11 @@ public class ComposeProcess {
     private String imagePath;
 
     @Column(length = 50)
-    private String genre;
+    private String style;
+
+    @Column(length = 50)
+    private String mood;
+
 
     private Integer durationSec; // 길이
 
@@ -97,8 +101,11 @@ public class ComposeProcess {
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
-    public String getGenre() { return genre; }
-    public void setGenre(String genre) { this.genre = genre; }
+    public String getStyle() { return style; }
+    public void setStyle(String genre) { this.style = style; }
+
+    public String getMood() { return mood; }
+    public void setMood(String Mood) { this.mood = mood; }
 
     public Integer getDurationSec() { return durationSec; }
     public void setDurationSec(Integer durationSec) { this.durationSec = durationSec; }

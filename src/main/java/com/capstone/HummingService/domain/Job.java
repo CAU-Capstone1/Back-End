@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "jobs",
         indexes = {
                 @Index(name = "idx_job_process", columnList = "processId"),
-                @Index(name = "idx_job_user", columnList = "userId") // ⭐ 인덱스 추가 (사용자별 작업 조회용)
+                @Index(name = "idx_job_user", columnList = "userId")
         })
 public class Job {
 

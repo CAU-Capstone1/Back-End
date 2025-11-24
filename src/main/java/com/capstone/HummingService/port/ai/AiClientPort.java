@@ -16,7 +16,9 @@ public interface AiClientPort {
      * @param hummingMainPath S3에 저장된 허밍 메인 부분 파일 키
      * @param hummingEndPath S3에 저장된 허밍 끝 부분 파일 키
      * @param imagePath S3에 저장된 시각 자료 파일 키 (Nullable)
-     * @param style 장르/스타일 (기존 genre에서 변경)
+     * @param style 스타일
+     * @param mood 장르
+     *
      * @param durationSec 길이 (초)
      * @param keyInfo 키 정보
      * @param tempoInfo 템포 정보
@@ -30,7 +32,8 @@ public interface AiClientPort {
             String hummingEndPath,   // 변경됨
             // List<String> songForm 인자 제거
             String imagePath,
-            String style,            // genre -> style
+            String style,
+            String mood,
             Integer durationSec,
             String keyInfo,
             String tempoInfo,
