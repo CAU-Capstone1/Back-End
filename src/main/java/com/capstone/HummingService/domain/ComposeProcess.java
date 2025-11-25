@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "compose_processes",
         indexes = {
-                @Index(name = "idx_cp_audio",  columnList = "audioId")
+                @Index(name = "idx_cp_audio",  columnList = "audioId"),
+                @Index(name = "idx_cp_user",  columnList = "userId")
         })
 public class ComposeProcess {
 
@@ -16,11 +17,44 @@ public class ComposeProcess {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
+    // AI가 생성한 최종 결과물 Audio ID
     private Long audioId;
 
+    // 이 요청을 생성한 사용자의 ID
+    @Column(nullable = false)
+    private Long userId;
+
+    // 다중 허밍 파일 경로
+    @Column(nullable = false)
+    private String hummingPath;
+
+    // 사용자가 선택한 곡 구조 순서 정보
+    @Lob
+    private String songFormInfo;
+
+    private String imagePath;
+
+    @Column(length = 50)
     private String style;
+
+    @Column(length = 50)
     private String mood;
+
+
+    private Integer durationSec; // 길이
+
+    @Column(length = 30)
+    private String keyInfo; // 키 정보
+
+    @Column(length = 30)
+    private String tempoInfo; // 템포 정보
+
+    @Lob
+    private String instruments; // 악기 목록
+
+    @Column(columnDefinition = "TEXT") // 텍스트 프롬프트 저장
+    private String prompt;
+
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'CREATED'")
@@ -49,69 +83,54 @@ public class ComposeProcess {
     }
 
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
+    public Long getAudioId() { return audioId; }
+    public void setAudioId(Long audioId) { this.audioId = audioId; }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getHummingPath() { return hummingPath; }
+    public void setHummingPath(String hummingPath) { this.hummingPath = hummingPath; }
 
-    public Long getAudioId() {
-        return audioId;
-    }
+    public String getSongFormInfo() { return songFormInfo; }
+    public void setSongFormInfo(String songFormInfo) { this.songFormInfo = songFormInfo; }
 
-    public void setAudioId(Long audioId) {
-        this.audioId = audioId;
-    }
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
-    public String getStyle() {
-        return style;
-    }
+    public String getStyle() { return style; }
+    public void setStyle(String genre) { this.style = style; }
 
-    public void setStyle(String style) {
-        this.style = style;
-    }
+    public String getMood() { return mood; }
+    public void setMood(String Mood) { this.mood = mood; }
 
-    public String getMood() {
-        return mood;
-    }
+    public Integer getDurationSec() { return durationSec; }
+    public void setDurationSec(Integer durationSec) { this.durationSec = durationSec; }
 
-    public void setMood(String mood) {
-        this.mood = mood;
-    }
+    public String getKeyInfo() { return keyInfo; }
+    public void setKeyInfo(String keyInfo) { this.keyInfo = keyInfo; }
 
-    public ProcessStatus getStatus() {
-        return status;
-    }
+    public String getTempoInfo() { return tempoInfo; }
+    public void setTempoInfo(String tempoInfo) { this.tempoInfo = tempoInfo; }
 
-    public void setStatus(ProcessStatus status) {
-        this.status = status;
-    }
+    public String getInstruments() { return instruments; }
+    public void setInstruments(String instruments) { this.instruments = instruments; }
 
-    public String getLastJobId() {
-        return lastJobId;
-    }
+    public String getPrompt() { return prompt; }
+    public void setPrompt(String prompt) { this.prompt = prompt; }
 
-    public void setLastJobId(String lastJobId) {
-        this.lastJobId = lastJobId;
-    }
+    public ProcessStatus getStatus() { return status; }
+    public void setStatus(ProcessStatus status) { this.status = status; }
 
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
+    public String getLastJobId() { return lastJobId; }
+    public void setLastJobId(String lastJobId) { this.lastJobId = lastJobId; }
 
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
+    public LocalDateTime getCreateTime() { return createTime; }
+    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
+    public LocalDateTime getUpdateTime() { return updateTime; }
+    public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
 }
