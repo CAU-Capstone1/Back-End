@@ -8,27 +8,27 @@ import java.io.IOException;
 @Service
 public class AudioService {
 
-    private final LocalStorageService localStorageService;
+    // ⭐ LocalStorageService 대신 S3Service 사용
+    private final S3Service s3Service;
 
-    public AudioService(LocalStorageService localStorageService) {
-        this.localStorageService = localStorageService;
+    // ⭐ 생성자 수정
+    public AudioService(S3Service s3Service) {
+        this.s3Service = s3Service;
     }
 
-
     public String saveAudio(MultipartFile file) throws IOException {
-
-        if (!file.getOriginalFilename().toLowerCase().endsWith(".mp3"))
-        {
+        // mp3 확장자 검사는 유지
+        if (file.getOriginalFilename() == null || !file.getOriginalFilename().toLowerCase().endsWith(".mp3")) {
             throw new IllegalArgumentException("mp3 파일만 업로드할 수 있습니다.");
         }
 
-        String savedPath = localStorageService.save(file,"humming");
-        return savedPath;
-
-
+        String audioPath = s3Service.uploadFile(file, "humming");
+        return audioPath;
     }
 
+    public String saveImage(MultipartFile file) throws IOException {
 
-
-
+        String imagePath = s3Service.uploadFile(file, "image");
+        return imagePath;
+    }
 }
