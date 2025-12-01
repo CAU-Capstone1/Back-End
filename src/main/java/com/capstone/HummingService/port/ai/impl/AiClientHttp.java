@@ -57,14 +57,7 @@ public class AiClientHttp implements AiClientPort {
     ) {
         // AI 서버는 melody_file을 요구하므로, 여기서는 hummingMainPath를 사용합니다.
 
-        // ⭐⭐⭐ [임시 수정] 프론트엔드에서 S3 키가 잘못 오는 문제 해결을 위해 유효한 키를 하드 코딩 ⭐⭐⭐
-        // 이 키는 이전에 S3 Upload Success 로그에 기록된 실제 키입니다.
-        // 최종적으로는 프론트엔드/ProcessService에서 유효한 키를 전달해야 합니다.
-        // String validS3Key = "humming1764169263508_main-test_melody.mp3";
-
-        // 현재는 DTO에서 받아온 hummingMainPath를 그대로 사용하되, S3 404 오류가 나지 않도록 유효한 키로 대체해야 합니다.
-        // DB에 저장된 값이 'test_melody.mp3'인 경우, 이 값을 대체합니다.
-        String s3KeyToDownload = "humming1764169263508_main-test_melody.mp3";
+        String s3KeyToDownload = hummingMainPath; // <--- 전달받은 올바른 인자를 사용하도록 수정
 
         try {
             // 1. S3에서 파일 다운로드 (byte 배열로 받음)
@@ -117,6 +110,7 @@ public class AiClientHttp implements AiClientPort {
             logger.error("AI 요청 중 심각한 오류 발생 JobId={}: {}", publicJobId, e.getMessage(), e);
 
             // S3 404 오류는 이제 이 임시 키를 사용했으므로 발생하지 않기를 기대합니다.
+            // 클라이언트에서 유효한 키를 보내지 않을 경우, 여기서 여전히 런타임 오류가 발생할 수 있습니다.
             throw new RuntimeException("AI API 호출 실패", e);
         }
     }
