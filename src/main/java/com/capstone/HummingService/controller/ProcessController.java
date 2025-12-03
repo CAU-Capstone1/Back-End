@@ -6,6 +6,7 @@ import com.capstone.HummingService.dto.response.ComposeResponse;
 import com.capstone.HummingService.repository.UserRepository;
 import com.capstone.HummingService.service.ProcessService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus; // HttpStatus import 추가
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,9 +35,17 @@ public class ProcessController {
             @Valid @RequestBody ComposeRequest request, // @RequestBody로 변경
             @AuthenticationPrincipal UserDetails principal
     ) {
-        // MultipartFile 관련 유효성 검사 로직은 DTO의 @NotNull/@NotBlank 검사로 대체되므로 제거
+        // 🚨🚨 [수정된 부분]: principal 널 체크 로직 추가 🚨🚨
+        if (principal == null) {
+            // 인증 정보가 누락된 경우 401 Unauthorized를 반환
+            // Spring Security 설정에서 permitAll() 처리했더라도,
+            // Controller가 principal을 요구하면 null이 들어올 수 있으므로 명시적으로 처리합니다.
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
+        // 널 체크 후 안전하게 getUsername() 호출
         String username = principal.getUsername();
+
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("인증된 사용자를 찾을 수 없습니다."));
 

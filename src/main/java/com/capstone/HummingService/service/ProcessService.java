@@ -12,6 +12,8 @@ import com.capstone.HummingService.repository.JobRepository;
 import com.capstone.HummingService.support.IdGenerator;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,11 +22,15 @@ import java.util.stream.Collectors;
 @Service
 public class ProcessService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ProcessService.class);
+
     private final JobRepository jobRepository;
     private final ComposeProcessRepository composeProcessRepository;
     private final AiClientPort aiClient;
     private final IdGenerator idGenerator;
-    private final AudioService audioService; // 파일 저장 기능은 이제 사용되지 않음 (프론트엔드에서 선행 처리)
+    // AudioService는 이제 AiClientHttp에서 S3 다운로드를 위해 사용됩니다.
+    // 여기서는 사용하지 않으므로 주석 처리하거나 제거할 수 있지만, 일단 유지합니다.
+    private final AudioService audioService;
 
     // 생성자 주입
     public ProcessService(JobRepository jobRepository,
@@ -36,9 +42,9 @@ public class ProcessService {
         this.composeProcessRepository = composeProcessRepository;
         this.aiClient = aiClient;
         this.idGenerator = idGenerator;
-        this.audioService = audioService;
+        this.audioService = audioService; // AudioService 주입은 유지
     }
-
+    // [중략 - composeWithSongForm 메서드는 이전과 동일]
     @Transactional
     public ComposeResponse composeWithSongForm(ComposeRequest request, Long userId) {
 
@@ -64,7 +70,6 @@ public class ProcessService {
             // 400 에러를 유발하는 대신, 런타임 예외를 발생시켜 서버 로그에 기록
             throw new RuntimeException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
         }
-
 
         // 2. ComposeProcess 생성 및 모든 데이터 매핑 (DB 저장을 위한 엔티티)
         ComposeProcess composeProcess = new ComposeProcess();
@@ -108,8 +113,10 @@ public class ProcessService {
         composeProcess.setLastJobId(job.getPublicJobId());
         composeProcessRepository.save(composeProcess);
 
-        /*
         // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송
+        logger.info("AI 요청 시작: JobId={} | Style={} | Duration={}",
+                job.getPublicJobId(), request.getStyle(), durationSec);
+
         aiClient.composeWithSongForm(
                 job.getPublicJobId(),
                 // 3개의 허밍 경로를 개별 인자로 전달
@@ -119,12 +126,15 @@ public class ProcessService {
 
                 imagePath, // referenceVisual 경로
                 request.getStyle(), // style
+                request.getMood(), // mood 인자 전달
                 durationSec, // Integer 값 전달
                 request.getKey(),
                 request.getTempo(),
                 request.getInstrument(), // 단일 String
                 "" // prompt 인자
-        );*/
+        );
+
+        logger.info("AI 요청 전송 성공: JobId={}", job.getPublicJobId());
 
         // 5. 클라이언트에 작업 상태 응답 반환
         return new ComposeResponse(job.getPublicJobId(), job.getStatus());
