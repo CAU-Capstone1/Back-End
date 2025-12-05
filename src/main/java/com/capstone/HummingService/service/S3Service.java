@@ -10,26 +10,35 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+// ⭐ Signed URL 생성을 위한 Presigner 관련 import 추가
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration; // URL 만료 시간 설정을 위해 Duration import
 
 @Service
 public class S3Service {
 
-    // S3 작업 로그를 위한 로거 필드
     private static final Logger log = LoggerFactory.getLogger(S3Service.class);
 
     private final S3Client s3Client;
+    // ⭐ Signed URL 생성을 위한 Presigner 클라이언트 필드 추가
+    private final S3Presigner presigner;
 
-    // application.properties에서 설정한 버킷 이름을 주입받습니다.
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
 
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
+        // ⭐ S3Client와 동일한 설정으로 Presigner 초기화
+        this.presigner = S3Presigner.create();
     }
+
+    // ... (uploadFile, uploadBytes, getFileUrl, downloadFile 메서드는 기존 코드 유지) ...
 
     /**
      * S3에 파일을 업로드하고, 저장된 파일의 URL 경로를 반환합니다.
@@ -39,14 +48,11 @@ public class S3Service {
      */
     public String uploadFile(MultipartFile file, String directoryPath) throws IOException {
         String originalFilename = file.getOriginalFilename();
-        // 파일 이름 충돌을 피하기 위해 타임스탬프를 추가하여 고유한 키를 생성합니다.
         String fileKey = directoryPath + System.currentTimeMillis() + "_" + originalFilename;
 
         try {
-            // S3 업로드 시작 정보를 로그로 출력
             log.info("S3 Upload Start: Bucket={} Key={} Size={}", bucketName, fileKey, file.getSize());
 
-            // S3 PutObject 요청 생성
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(fileKey)
@@ -54,35 +60,58 @@ public class S3Service {
                     .contentLength(file.getSize())
                     .build();
 
-            // 파일 데이터를 요청 본문으로 전송 (실제 업로드 실행)
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
-
-            // S3 업로드 성공 로그 출력
             log.info("S3 Upload Success: {}", fileKey);
 
-            // 데이터베이스에 저장할 파일 키 반환
             return fileKey;
 
         } catch (S3Exception e) {
-            // S3 관련 예외 처리 (권한, 버킷 없음 등)
-            // 에러 로그에 상세 메시지와 스택 트레이스를 포함하여 출력
             log.error("S3 Upload Failed: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload file to S3: " + e.getMessage());
         }
     }
 
     /**
-     * S3에 저장된 파일의 URL을 생성합니다.
+     * byte 배열 데이터를 S3에 직접 업로드하고, 저장된 파일의 객체 키를 반환합니다.
+     * @param bytes 업로드할 파일 데이터 (byte 배열)
+     * @param directoryPath S3 내에 저장될 디렉토리 경로 (예: "final-bgm/")
+     * @param filename 저장될 파일 이름 (고유해야 함)
+     * @param contentType 파일의 MIME 타입 (예: "audio/wav")
+     * @return S3에 저장된 객체 키 (Key)
+     */
+    public String uploadBytes(byte[] bytes, String directoryPath, String filename, String contentType) {
+        String fileKey = directoryPath + filename;
+
+        try {
+            log.info("S3 Bytes Upload Start: Bucket={} Key={} Size={}", bucketName, fileKey, bytes.length);
+
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(fileKey)
+                    .contentType(contentType)
+                    .contentLength((long) bytes.length)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
+
+            log.info("S3 Bytes Upload Success: {}", fileKey);
+
+            return fileKey;
+
+        } catch (S3Exception e) {
+            log.error("S3 Bytes Upload Failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload byte array to S3: " + e.getMessage());
+        }
+    }
+
+    /**
+     * S3에 저장된 파일의 URL을 생성합니다. (퍼블릭 액세스 차단 시 이 메서드는 사용되지 않음)
      * @param fileKey S3에 저장된 객체 키 (Key)
-     * @return 파일에 접근할 수 있는 URL (퍼블릭 액세스 차단 시 내부 접근용 URL)
+     * @return 파일에 접근할 수 있는 URL
      */
     public String getFileUrl(String fileKey) {
-        // 객체 키에 특수 문자가 포함될 경우를 대비하여 인코딩합니다.
-        // URL 인코딩 시 ' ' (공백)이 '+'로 변환되는데, S3 URL에서는 '%20'으로 유지해야 하므로 replace 처리합니다.
         String encodedKey = URLEncoder.encode(fileKey, StandardCharsets.UTF_8).replace("+", "%20");
 
-        // S3 버킷의 기본 URL 형식에 맞추어 URL을 생성합니다.
-        // 리전은 S3Client 설정(serviceClientConfiguration)에서 가져옵니다.
         return String.format("https://%s.s3.%s.amazonaws.com/%s",
                 bucketName,
                 s3Client.serviceClientConfiguration().region().id(),
@@ -101,11 +130,45 @@ public class S3Service {
                     .key(fileKey)
                     .build();
 
-            // S3Client의 getObjectAsBytes를 사용하여 파일 데이터를 바이트 배열로 가져옵니다.
             return s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
 
         } catch (S3Exception e) {
             throw new RuntimeException("Failed to download file from S3: " + e.getMessage());
         }
     }
+
+    // ⭐⭐⭐ Signed URL 생성 메서드 추가 (핵심) ⭐⭐⭐
+    /**
+     * S3 Key를 사용하여 파일에 접근할 수 있는 기간 한정 Signed URL을 생성합니다.
+     * @param fileKey S3에 저장된 객체 키 (Key)
+     * @return 생성된 Signed URL 문자열
+     */
+    public String generatePresignedUrl(String fileKey) {
+        try {
+            // 1. GetObject 요청 구성
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(fileKey)
+                    .build();
+
+            // 2. Presign 요청 구성 (URL 만료 시간 5분 설정)
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(5)) // URL 유효 시간 설정
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            // 3. Presigned URL 생성
+            PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
+            String presignedUrl = presignedRequest.url().toExternalForm();
+
+            log.info("Presigned URL generated for Key: {}", fileKey);
+
+            return presignedUrl;
+
+        } catch (S3Exception e) {
+            log.error("Failed to generate Presigned URL for Key: {}", fileKey, e);
+            throw new RuntimeException("Failed to generate Presigned URL: " + e.getMessage());
+        }
+    }
+    // ⭐⭐⭐ 추가된 메서드 끝 ⭐⭐⭐
 }
