@@ -1,12 +1,15 @@
 package com.capstone.HummingService.service;
 
+import com.capstone.HummingService.domain.Audio;
 import com.capstone.HummingService.domain.ComposeProcess;
 import com.capstone.HummingService.domain.Job;
+import com.capstone.HummingService.domain.enums.AudioType;
 import com.capstone.HummingService.domain.enums.JobStatus;
 import com.capstone.HummingService.domain.enums.ProcessStatus;
 import com.capstone.HummingService.dto.request.ComposeRequest;
 import com.capstone.HummingService.dto.response.ComposeResponse;
 import com.capstone.HummingService.port.ai.AiClientPort;
+import com.capstone.HummingService.repository.AudioRepository; // ⭐️ AudioRepository import 추가
 import com.capstone.HummingService.repository.ComposeProcessRepository;
 import com.capstone.HummingService.repository.JobRepository;
 import com.capstone.HummingService.support.IdGenerator;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,69 +32,60 @@ public class ProcessService {
     private final ComposeProcessRepository composeProcessRepository;
     private final AiClientPort aiClient;
     private final IdGenerator idGenerator;
-    // AudioService는 이제 AiClientHttp에서 S3 다운로드를 위해 사용됩니다.
-    // 여기서는 사용하지 않으므로 주석 처리하거나 제거할 수 있지만, 일단 유지합니다.
     private final AudioService audioService;
+    private final S3Service s3Service; // ⭐️ S3Service 필드 추가 ⭐️
+    private final AudioRepository audioRepository; // ⭐️ AudioRepository 필드 추가 ⭐️
 
     // 생성자 주입
     public ProcessService(JobRepository jobRepository,
                           ComposeProcessRepository composeProcessRepository,
                           AiClientPort aiClient,
                           IdGenerator idGenerator,
-                          AudioService audioService) {
+                          AudioService audioService,
+                          S3Service s3Service, // ⭐️ S3Service 주입 추가 ⭐️
+                          AudioRepository audioRepository) { // ⭐️ AudioRepository 주입 추가 ⭐️
         this.jobRepository = jobRepository;
         this.composeProcessRepository = composeProcessRepository;
         this.aiClient = aiClient;
         this.idGenerator = idGenerator;
-        this.audioService = audioService; // AudioService 주입은 유지
+        this.audioService = audioService;
+        this.s3Service = s3Service; // ⭐️ S3Service 할당 ⭐️
+        this.audioRepository = audioRepository; // ⭐️ AudioRepository 할당 ⭐️
     }
-    // [중략 - composeWithSongForm 메서드는 이전과 동일]
+
     @Transactional
     public ComposeResponse composeWithSongForm(ComposeRequest request, Long userId) {
 
-        // 1. 파일 경로 처리 (프론트엔드에서 이미 업로드된 String 경로를 DTO에서 가져옴)
-
-        // 3개의 허밍 경로를 필터링하여 리스트로 통합
+        // 1. 파일 경로 처리
         List<String> hummingPaths = Arrays.asList(
                         request.getHummingStart(),
                         request.getHummingMain(),
                         request.getHummingEnd()
                 ).stream()
-                .filter(path -> path != null && !path.trim().isEmpty()) // null 또는 빈 문자열 제외
+                .filter(path -> path != null && !path.trim().isEmpty())
                 .collect(Collectors.toList());
 
-        // 이미지 경로는 DTO에서 직접 가져옴
         String imagePath = request.getReferenceVisual();
 
-        // duration 필드는 String으로 오므로 Integer로 변환 준비
         Integer durationSec;
         try {
             durationSec = Integer.parseInt(request.getDuration());
         } catch (NumberFormatException e) {
-            // 400 에러를 유발하는 대신, 런타임 예외를 발생시켜 서버 로그에 기록
             throw new RuntimeException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
         }
 
-        // 2. ComposeProcess 생성 및 모든 데이터 매핑 (DB 저장을 위한 엔티티)
+        // 2. ComposeProcess 생성 및 모든 데이터 매핑
         ComposeProcess composeProcess = new ComposeProcess();
         composeProcess.setAudioId(null);
-
-        // 사용자 ID 연결
         composeProcess.setUserId(userId);
-
-        // 허밍 경로 저장 (콤마로 연결)
         composeProcess.setHummingPath(String.join(",", hummingPaths));
-        // 시각 자료 경로 저장
         composeProcess.setImagePath(imagePath);
-
-        // 음악 설정 (프론트 DTO 필드명에 맞추어 매핑)
-        composeProcess.setStyle(request.getStyle()); // DTO: style -> DB: genre
+        composeProcess.setStyle(request.getStyle());
         composeProcess.setMood(request.getMood());
-        composeProcess.setDurationSec(durationSec); // 변환된 Integer 값 저장
+        composeProcess.setDurationSec(durationSec);
         composeProcess.setKeyInfo(request.getKey());
         composeProcess.setTempoInfo(request.getTempo());
 
-        // Instrument 처리 (단일 String으로 저장)
         if (request.getInstrument() != null) {
             composeProcess.setInstruments(request.getInstrument());
         } else {
@@ -100,7 +95,7 @@ public class ProcessService {
         composeProcess.setStatus(ProcessStatus.CREATED);
         composeProcessRepository.save(composeProcess);
 
-        // 3. Job 생성 (AI 작업 요청 건)
+        // 3. Job 생성
         Job job = new Job();
         job.setPublicJobId(idGenerator.generate("job"));
         job.setProcessId(composeProcess.getId());
@@ -113,28 +108,87 @@ public class ProcessService {
         composeProcess.setLastJobId(job.getPublicJobId());
         composeProcessRepository.save(composeProcess);
 
-        // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송
-        logger.info("AI 요청 시작: JobId={} | Style={} | Duration={}",
-                job.getPublicJobId(), request.getStyle(), durationSec);
 
-        aiClient.composeWithSongForm(
-                job.getPublicJobId(),
-                // 3개의 허밍 경로를 개별 인자로 전달
-                request.getHummingStart(),
-                request.getHummingMain(),
-                request.getHummingEnd(),
+        // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송 및 결과 처리 (핵심 로직)
+        logger.info("AI 요청 시작: JobId={}", job.getPublicJobId());
 
-                imagePath, // referenceVisual 경로
-                request.getStyle(), // style
-                request.getMood(), // mood 인자 전달
-                durationSec, // Integer 값 전달
-                request.getKey(),
-                request.getTempo(),
-                request.getInstrument(), // 단일 String
-                "" // prompt 인자
-        );
+        try {
+            // 4-1. AI 서버에 요청을 보내고, 생성된 BGM 파일의 byte[] 데이터를 응답으로 받음
+            byte[] bgmFileData = aiClient.composeWithSongForm(
+                    job.getPublicJobId(),
+                    request.getHummingStart(),
+                    request.getHummingMain(),
+                    request.getHummingEnd(),
+                    imagePath,
+                    request.getStyle(),
+                    request.getMood(),
+                    durationSec,
+                    request.getKey(),
+                    request.getTempo(),
+                    request.getInstrument(),
+                    "" // prompt 인자
+            );
 
-        logger.info("AI 요청 전송 성공: JobId={}", job.getPublicJobId());
+            logger.info("AI 요청 전송 및 BGM 데이터 수신 성공. JobId={}", job.getPublicJobId());
+
+            // 4-2. BGM 파일 데이터를 S3에 업로드
+            String fileExtension = ".wav"; // AI 서버 응답 타입 가정
+            String s3FileName = job.getPublicJobId() + fileExtension;
+
+            String finalBgmS3Key = s3Service.uploadBytes(
+                    bgmFileData,
+                    "final-bgm/", // AI 결과물 저장 디렉토리
+                    s3FileName,
+                    "audio/wav" // ContentType
+            );
+
+            logger.info("S3 업로드 완료: Key={}", finalBgmS3Key);
+
+            // ⭐️ 4-3. Audio 엔티티를 생성하고 S3 Key 및 메타데이터를 저장합니다. ⭐️
+            Audio finalAudio = new Audio();
+            finalAudio.setFilePath(finalBgmS3Key);          // S3 Key 저장
+            finalAudio.setFileSize((long) bgmFileData.length); // 파일 크기
+            // finalAudio.setAudioLength(...)               // 오디오 길이 설정 로직이 필요하면 추가
+            finalAudio.setName(s3FileName);
+            finalAudio.setAudioType(AudioType.GENERATED);
+            finalAudio.setGenerTime(LocalDateTime.now());
+
+            Audio savedAudio = audioRepository.save(finalAudio);
+            Long finalAudioId = savedAudio.getId();
+
+
+            // 4-4. Job 및 ComposeProcess 상태 업데이트 및 Audio ID DB 저장
+            job.setStatus(JobStatus.SUCCEEDED);
+            job.setProgress(100.0);
+            job.setErrorMessage(null); // 성공 시 에러 메시지 초기화
+
+            // ⭐️ Job 엔티티에 Audio ID (Long) 저장 ⭐️
+            job.setOutputAudioId(finalAudioId);
+
+            composeProcess.setStatus(ProcessStatus.DONE);
+
+            // ⭐️ ComposeProcess 엔티티에 Audio ID (Long) 저장 ⭐️
+            composeProcess.setAudioId(finalAudioId);
+
+            // 4-5. 상태 저장
+            jobRepository.save(job);
+            composeProcessRepository.save(composeProcess);
+
+        } catch (Exception e) {
+            // ⭐️ AI 요청, S3 업로드 중 오류 발생 시 Job/Process 상태를 FAILED로 변경 ⭐️
+            logger.error("BGM 생성 및 저장 중 최종 오류 발생 JobId={}: {}", job.getPublicJobId(), e.getMessage(), e);
+
+            job.setStatus(JobStatus.FAILED);
+            job.setProgress(0.0);
+            job.setErrorMessage(e.getMessage());
+            composeProcess.setStatus(ProcessStatus.FAILED);
+
+            jobRepository.save(job);
+            composeProcessRepository.save(composeProcess);
+
+            // 클라이언트에게 오류 응답을 전달하기 위해 예외를 던집니다.
+            throw new RuntimeException("BGM 생성 및 저장 실패", e);
+        }
 
         // 5. 클라이언트에 작업 상태 응답 반환
         return new ComposeResponse(job.getPublicJobId(), job.getStatus());

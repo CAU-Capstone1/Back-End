@@ -28,7 +28,6 @@ public class AudioService {
     }
 
     public String saveImage(MultipartFile file) throws IOException {
-
         String imagePath = s3Service.uploadFile(file, "image");
         return imagePath;
     }
@@ -52,4 +51,25 @@ public class AudioService {
             throw e;
         }
     }
+
+    // ⭐⭐⭐ Signed URL 생성 로직 추가 (AudioController에서 호출) ⭐⭐⭐
+    /**
+     * S3 Key를 사용하여 파일에 접근할 수 있는 기간 한정 Signed URL을 생성합니다.
+     * @param s3Key S3에 저장된 객체 키 (Key)
+     * @return 생성된 Signed URL 문자열
+     */
+    public String generateSignedUrl(String s3Key) {
+        if (s3Key == null || s3Key.trim().isEmpty()) {
+            throw new IllegalArgumentException("S3 Key가 유효하지 않습니다.");
+        }
+
+        // ⭐ S3Service에 실제 Presigner 로직을 위임합니다.
+        //    (S3Service에는 generatePresignedUrl 메서드가 추가되어야 합니다.)
+        try {
+            return s3Service.generatePresignedUrl(s3Key);
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Signed URL 생성에 실패했습니다: " + e.getMessage());
+        }
+    }
+    // ⭐⭐⭐ 추가된 메서드 끝 ⭐⭐⭐
 }
