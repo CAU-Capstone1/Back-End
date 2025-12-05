@@ -10,7 +10,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-// ⭐ Signed URL 생성을 위한 Presigner 관련 import 추가
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -18,7 +17,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration; // URL 만료 시간 설정을 위해 Duration import
+import java.time.Duration;
+import java.util.concurrent.TimeUnit; // ⬅️ 동적 유효 기간을 위해 추가
 
 @Service
 public class S3Service {
@@ -137,13 +137,16 @@ public class S3Service {
         }
     }
 
-    // ⭐⭐⭐ Signed URL 생성 메서드 추가 (핵심) ⭐⭐⭐
+    // ⭐⭐⭐ Signed URL 생성 메서드 (동적 유효 기간 허용) ⭐⭐⭐
     /**
      * S3 Key를 사용하여 파일에 접근할 수 있는 기간 한정 Signed URL을 생성합니다.
+     * 이 메서드는 JobService와 보관함(Archive) 서비스 모두에서 사용 가능합니다.
      * @param fileKey S3에 저장된 객체 키 (Key)
+     * @param durationValue 유효 기간 값 (예: 5)
+     * @param durationUnit 유효 기간 단위 (예: TimeUnit.MINUTES)
      * @return 생성된 Signed URL 문자열
      */
-    public String generatePresignedUrl(String fileKey) {
+    public String generatePresignedUrl(String fileKey, long durationValue, TimeUnit durationUnit) {
         try {
             // 1. GetObject 요청 구성
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -151,17 +154,23 @@ public class S3Service {
                     .key(fileKey)
                     .build();
 
-            // 2. Presign 요청 구성 (URL 만료 시간 5분 설정)
+            // 2. 입력받은 durationValue와 durationUnit을 사용하여 Duration 객체 생성
+            Duration signatureDuration;
+            long seconds = durationUnit.toSeconds(durationValue);
+            signatureDuration = Duration.ofSeconds(seconds);
+
+
+            // 3. Presign 요청 구성
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofMinutes(5)) // URL 유효 시간 설정
+                    .signatureDuration(signatureDuration) // 동적으로 설정된 유효 시간 적용
                     .getObjectRequest(getObjectRequest)
                     .build();
 
-            // 3. Presigned URL 생성
+            // 4. Presigned URL 생성
             PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
             String presignedUrl = presignedRequest.url().toExternalForm();
 
-            log.info("Presigned URL generated for Key: {}", fileKey);
+            log.info("Presigned URL generated for Key: {} (Duration: {} {})", fileKey, durationValue, durationUnit.toString());
 
             return presignedUrl;
 
@@ -170,5 +179,4 @@ public class S3Service {
             throw new RuntimeException("Failed to generate Presigned URL: " + e.getMessage());
         }
     }
-    // ⭐⭐⭐ 추가된 메서드 끝 ⭐⭐⭐
 }
