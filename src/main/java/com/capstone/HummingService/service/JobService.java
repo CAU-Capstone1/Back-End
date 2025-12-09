@@ -44,9 +44,9 @@ public class JobService {
                 Audio finalAudio = optionalAudio.get();
                 String s3Key = finalAudio.getFilePath();
 
-                // ⭐️ S3Service 호출 시 유효 기간을 5분으로 직접 지정 ⭐️
-                // S3 파일에 접근 가능한 URL을 생성합니다.
-                musicUrl = s3Service.generatePresignedUrl(s3Key, 5, TimeUnit.MINUTES);
+                // 🌟 [수정] 유효 기간을 5분(TimeUnit.MINUTES)에서 7일(TimeUnit.DAYS)로 변경 🌟
+                // 7일은 AWS S3 Pre-signed URL의 최대 유효 기간입니다.
+                musicUrl = s3Service.generatePresignedUrl(s3Key, 7, TimeUnit.DAYS); // <--- 이 부분을 수정합니다.
             }
         }
 
