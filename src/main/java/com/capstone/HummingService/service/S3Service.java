@@ -13,12 +13,13 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL; // PublicRead 설정을 위한 Import (주석 처리)
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit; // ⬅️ 동적 유효 기간을 위해 추가
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class S3Service {
@@ -26,7 +27,7 @@ public class S3Service {
     private static final Logger log = LoggerFactory.getLogger(S3Service.class);
 
     private final S3Client s3Client;
-    // ⭐ Signed URL 생성을 위한 Presigner 클라이언트 필드 추가
+    // Signed URL 생성을 위한 Presigner 클라이언트
     private final S3Presigner presigner;
 
     @Value("${spring.cloud.aws.s3.bucket}")
@@ -34,11 +35,9 @@ public class S3Service {
 
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
-        // ⭐ S3Client와 동일한 설정으로 Presigner 초기화
+        // S3Client와 동일한 설정으로 Presigner 초기화
         this.presigner = S3Presigner.create();
     }
-
-    // ... (uploadFile, uploadBytes, getFileUrl, downloadFile 메서드는 기존 코드 유지) ...
 
     /**
      * S3에 파일을 업로드하고, 저장된 파일의 URL 경로를 반환합니다.
@@ -58,6 +57,7 @@ public class S3Service {
                     .key(fileKey)
                     .contentType(file.getContentType())
                     .contentLength(file.getSize())
+                    // ⭐ 과제용 영구 설정을 원할 경우: .acl(ObjectCannedACL.PUBLIC_READ) 추가 ⭐
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
@@ -90,6 +90,7 @@ public class S3Service {
                     .key(fileKey)
                     .contentType(contentType)
                     .contentLength((long) bytes.length)
+                    // ⭐ 과제용 영구 설정을 원할 경우: .acl(ObjectCannedACL.PUBLIC_READ) 추가 ⭐
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
@@ -137,13 +138,11 @@ public class S3Service {
         }
     }
 
-    // ⭐⭐⭐ Signed URL 생성 메서드 (동적 유효 기간 허용) ⭐⭐⭐
     /**
      * S3 Key를 사용하여 파일에 접근할 수 있는 기간 한정 Signed URL을 생성합니다.
-     * 이 메서드는 JobService와 보관함(Archive) 서비스 모두에서 사용 가능합니다.
      * @param fileKey S3에 저장된 객체 키 (Key)
-     * @param durationValue 유효 기간 값 (예: 5)
-     * @param durationUnit 유효 기간 단위 (예: TimeUnit.MINUTES)
+     * @param durationValue 유효 기간 값 (예: 7)
+     * @param durationUnit 유효 기간 단위 (예: TimeUnit.DAYS)
      * @return 생성된 Signed URL 문자열
      */
     public String generatePresignedUrl(String fileKey, long durationValue, TimeUnit durationUnit) {
@@ -155,10 +154,8 @@ public class S3Service {
                     .build();
 
             // 2. 입력받은 durationValue와 durationUnit을 사용하여 Duration 객체 생성
-            Duration signatureDuration;
             long seconds = durationUnit.toSeconds(durationValue);
-            signatureDuration = Duration.ofSeconds(seconds);
-
+            Duration signatureDuration = Duration.ofSeconds(seconds);
 
             // 3. Presign 요청 구성
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
