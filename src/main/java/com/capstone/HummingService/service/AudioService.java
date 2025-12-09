@@ -5,6 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit; // ⬅️ TimeUnit import 추가
 
 @Service
 public class AudioService {
@@ -23,12 +24,12 @@ public class AudioService {
             throw new IllegalArgumentException("mp3 파일만 업로드할 수 있습니다.");
         }
 
-        String audioPath = s3Service.uploadFile(file, "humming");
+        String audioPath = s3Service.uploadFile(file, "humming/"); // ⬅️ directoryPath 끝에 / 추가 권장
         return audioPath;
     }
 
     public String saveImage(MultipartFile file) throws IOException {
-        String imagePath = s3Service.uploadFile(file, "image");
+        String imagePath = s3Service.uploadFile(file, "image/"); // ⬅️ directoryPath 끝에 / 추가 권장
         return imagePath;
     }
 
@@ -52,9 +53,10 @@ public class AudioService {
         }
     }
 
-    // ⭐⭐⭐ Signed URL 생성 로직 추가 (AudioController에서 호출) ⭐⭐⭐
+    // ⭐⭐⭐ Signed URL 생성 로직 수정 (유효 기간 1시간 고정) ⭐⭐⭐
     /**
      * S3 Key를 사용하여 파일에 접근할 수 있는 기간 한정 Signed URL을 생성합니다.
+     * (주로 유저의 업로드 파일 미리보기 URL 생성에 사용됩니다.)
      * @param s3Key S3에 저장된 객체 키 (Key)
      * @return 생성된 Signed URL 문자열
      */
@@ -63,10 +65,13 @@ public class AudioService {
             throw new IllegalArgumentException("S3 Key가 유효하지 않습니다.");
         }
 
-        // ⭐ S3Service에 실제 Presigner 로직을 위임합니다.
-        //    (S3Service에는 generatePresignedUrl 메서드가 추가되어야 합니다.)
+        // ⭐ S3Service의 동적 메서드에 1시간 유효 기간을 고정하여 전달합니다.
         try {
-            return s3Service.generatePresignedUrl(s3Key);
+            // 1시간 유효 기간 설정
+            final long DURATION_VALUE = 1;
+            final TimeUnit DURATION_UNIT = TimeUnit.HOURS;
+
+            return s3Service.generatePresignedUrl(s3Key, DURATION_VALUE, DURATION_UNIT);
         } catch (RuntimeException e) {
             throw new RuntimeException("Signed URL 생성에 실패했습니다: " + e.getMessage());
         }
