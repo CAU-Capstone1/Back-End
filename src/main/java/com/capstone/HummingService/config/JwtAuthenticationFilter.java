@@ -1,4 +1,4 @@
-package com.capstone.HummingService.config; // 혹은 com.capstone.HummingService.config.security
+package com.capstone.HummingService.config;
 
 import com.capstone.HummingService.support.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
