@@ -9,7 +9,7 @@ import com.capstone.HummingService.domain.enums.ProcessStatus;
 import com.capstone.HummingService.dto.request.ComposeRequest;
 import com.capstone.HummingService.dto.response.ComposeResponse;
 import com.capstone.HummingService.port.ai.AiClientPort;
-import com.capstone.HummingService.repository.AudioRepository; // ⭐️ AudioRepository import 추가
+import com.capstone.HummingService.repository.AudioRepository;
 import com.capstone.HummingService.repository.ComposeProcessRepository;
 import com.capstone.HummingService.repository.JobRepository;
 import com.capstone.HummingService.support.IdGenerator;
@@ -33,8 +33,8 @@ public class ProcessService {
     private final AiClientPort aiClient;
     private final IdGenerator idGenerator;
     private final AudioService audioService;
-    private final S3Service s3Service; // ⭐️ S3Service 필드 추가 ⭐️
-    private final AudioRepository audioRepository; // ⭐️ AudioRepository 필드 추가 ⭐️
+    private final S3Service s3Service;
+    private final AudioRepository audioRepository;
 
     // 생성자 주입
     public ProcessService(JobRepository jobRepository,
@@ -42,15 +42,15 @@ public class ProcessService {
                           AiClientPort aiClient,
                           IdGenerator idGenerator,
                           AudioService audioService,
-                          S3Service s3Service, // ⭐️ S3Service 주입 추가 ⭐️
-                          AudioRepository audioRepository) { // ⭐️ AudioRepository 주입 추가 ⭐️
+                          S3Service s3Service,
+                          AudioRepository audioRepository) {
         this.jobRepository = jobRepository;
         this.composeProcessRepository = composeProcessRepository;
         this.aiClient = aiClient;
         this.idGenerator = idGenerator;
         this.audioService = audioService;
-        this.s3Service = s3Service; // ⭐️ S3Service 할당 ⭐️
-        this.audioRepository = audioRepository; // ⭐️ AudioRepository 할당 ⭐️
+        this.s3Service = s3Service;
+        this.audioRepository = audioRepository;
     }
 
     @Transactional
@@ -109,7 +109,7 @@ public class ProcessService {
         composeProcessRepository.save(composeProcess);
 
 
-        // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송 및 결과 처리 (핵심 로직)
+        // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송 및 결과 처리
         logger.info("AI 요청 시작: JobId={}", job.getPublicJobId());
 
         try {
@@ -139,16 +139,16 @@ public class ProcessService {
                     bgmFileData,
                     "final-bgm/", // AI 결과물 저장 디렉토리
                     s3FileName,
-                    "audio/wav" // ContentType
+                    "audio/wav"
             );
 
             logger.info("S3 업로드 완료: Key={}", finalBgmS3Key);
 
-            // ⭐️ 4-3. Audio 엔티티를 생성하고 S3 Key 및 메타데이터를 저장합니다. ⭐️
+            // 4-3.Audio 엔티티를 생성하고 S3 Key 및 메타데이터를 저장
             Audio finalAudio = new Audio();
             finalAudio.setFilePath(finalBgmS3Key);          // S3 Key 저장
             finalAudio.setFileSize((long) bgmFileData.length); // 파일 크기
-            // finalAudio.setAudioLength(...)               // 오디오 길이 설정 로직이 필요하면 추가
+            // finalAudio.setAudioLength(...)
             finalAudio.setName(s3FileName);
             finalAudio.setAudioType(AudioType.GENERATED);
             finalAudio.setGenerTime(LocalDateTime.now());
@@ -162,12 +162,10 @@ public class ProcessService {
             job.setProgress(100.0);
             job.setErrorMessage(null); // 성공 시 에러 메시지 초기화
 
-            // ⭐️ Job 엔티티에 Audio ID (Long) 저장 ⭐️
             job.setOutputAudioId(finalAudioId);
 
             composeProcess.setStatus(ProcessStatus.DONE);
 
-            // ⭐️ ComposeProcess 엔티티에 Audio ID (Long) 저장 ⭐️
             composeProcess.setAudioId(finalAudioId);
 
             // 4-5. 상태 저장
@@ -175,7 +173,6 @@ public class ProcessService {
             composeProcessRepository.save(composeProcess);
 
         } catch (Exception e) {
-            // ⭐️ AI 요청, S3 업로드 중 오류 발생 시 Job/Process 상태를 FAILED로 변경 ⭐️
             logger.error("BGM 생성 및 저장 중 최종 오류 발생 JobId={}: {}", job.getPublicJobId(), e.getMessage(), e);
 
             job.setStatus(JobStatus.FAILED);
@@ -186,7 +183,6 @@ public class ProcessService {
             jobRepository.save(job);
             composeProcessRepository.save(composeProcess);
 
-            // 클라이언트에게 오류 응답을 전달하기 위해 예외를 던집니다.
             throw new RuntimeException("BGM 생성 및 저장 실패", e);
         }
 

@@ -32,14 +32,12 @@ public class AiClientHttp implements AiClientPort {
     private String serverPort;
 
 
-    // 생성자에 AudioService를 추가 주입받도록 수정
     public AiClientHttp(@Qualifier("aiWebClient") WebClient aiWebClient, AudioService audioService) {
         this.aiWebClient = aiWebClient;
         this.audioService = audioService;
     }
 
     @Override
-    // ⭐️ 반환 타입을 byte[]로 변경하고 throw IOException 추가 ⭐️
     public byte[] composeWithSongForm(
             String publicJobId,
             String hummingStartPath,
@@ -54,7 +52,7 @@ public class AiClientHttp implements AiClientPort {
             String tempoInfo,
             String instrument,
             String prompt
-    ) throws IOException { // S3 다운로드 및 WebClient 처리를 위해 IOException을 throw하도록 명시
+    ) throws IOException {
 
         String s3KeyToDownload = hummingMainPath;
 
@@ -69,7 +67,7 @@ public class AiClientHttp implements AiClientPort {
                 }
             };
 
-            // 2. MultipartBodyBuilder 생성 및 폼 데이터 추가 (기존 로직 유지)
+            // 2. MultipartBodyBuilder 생성 및 폼 데이터 추가
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
             builder.part("melody_file", hummingResource)
                     .filename(hummingResource.getFilename())
@@ -81,19 +79,17 @@ public class AiClientHttp implements AiClientPort {
 
             logger.info("AI Request: Path=/generate, ContentType=multipart/form-data, Description={}", finalDescription);
 
-            // 3. WebClient 요청 및 응답 데이터 처리 (핵심 수정)
+            // 3. WebClient 요청 및 응답 데이터 처리
             byte[] bgmFileData = aiWebClient.post()
                     .uri("/generate")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(BodyInserters.fromMultipartData(builder.build()))
                     .retrieve()
-                    // ⭐️ 응답 본문을 byte[] 형태로 받도록 수정 ⭐️
                     .bodyToMono(byte[].class)
-                    .block(); // 동기적으로 요청을 완료하고 응답을 받음
+                    .block();
 
             logger.info("AI 요청 전송 및 BGM 데이터 수신 성공: JobId={} | Data Size={}", publicJobId, bgmFileData.length);
 
-            // ⭐️ BGM 파일 데이터 반환 ⭐️
             return bgmFileData;
 
         } catch (WebClientResponseException e) {

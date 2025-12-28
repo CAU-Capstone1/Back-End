@@ -56,14 +56,10 @@ public class CallbackService {
             // 결과 오디오가 숫자 ID로 온 경우(권장) → Job/Process에 반영
             if (req.audioId() != null) {
                 job.setOutputAudioId(req.audioId());
-                process.setAudioId(req.audioId()); // ComposeProcess.audioId(nullable=true 권장)
+                process.setAudioId(req.audioId());
             }
 
-            // 문자열 URL만 온 경우(현재 DTO에 audioUrl이 있을 수 있음)
-            // 필요하면 별도 Audio 엔티티를 만들어 저장 후 그 id를 setAudioId(...) 하도록 확장
-            // 여기서는 메시지에 남겨둔다.
             if (req.audioUrl() != null) {
-                // 선택: job.setMessage("Result: " + req.audioUrl());
             }
 
             process.setStatus(ProcessStatus.DONE);
