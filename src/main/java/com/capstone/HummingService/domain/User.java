@@ -12,22 +12,18 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // [필수] 이메일 필드
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    // [필수] 사용자명 필드
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
     @Column(nullable = false, length = 100)
     private String password;
 
-    // [필수] 이름 필드
     @Column(nullable = false, length = 50)
     private String name;
 
-    // 사용자 역할
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
@@ -50,7 +46,6 @@ public class User {
 
     protected User() {}
 
-    // [최종 수정] 필수 필드 5가지(email, username, password, name, role)를 생성자에서 초기화합니다.
     public User(String email, String username, String password, String name, Role role) {
         this.email = email; // email 필드 초기화
         this.username = username;
@@ -59,7 +54,6 @@ public class User {
         this.role = role;
     }
 
-    // --- Getters ---
     public Long getId() { return id; }
 
     public String getEmail() { return email; }
@@ -68,7 +62,6 @@ public class User {
     public String getName() { return name; }
     public Role getRole() { return role; }
 
-    // --- Setters ---
     public void setEmail(String email) { this.email = email; }
     public void setUsername(String username) { this.username = username; }
     public void setPassword(String password) { this.password = password; }

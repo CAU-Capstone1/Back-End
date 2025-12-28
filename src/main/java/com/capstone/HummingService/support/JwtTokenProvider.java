@@ -33,8 +33,6 @@ public class JwtTokenProvider {
             @Value("${jwt.access-token-expiration-in-milliseconds}") long accessTokenExpirationTime,
             @Value("${jwt.refresh-token-expiration-in-milliseconds}") long refreshTokenExpirationTime) {
 
-        // [최종 수정] BASE64 디코딩 후, HS512의 최소 요구사항인 512비트를 만족하도록 키를 생성합니다.
-        // 기존의 짧은 키에서 발생했던 WeakKeyException을 해결합니다.
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 
         // Keys.hmacShaKeyFor를 사용하여 512비트 이상을 만족하는 안전한 키를 생성
@@ -44,7 +42,6 @@ public class JwtTokenProvider {
         this.refreshTokenExpirationTime = refreshTokenExpirationTime;
     }
 
-    // ... (createAccessToken, getAuthentication, validateToken 메서드 생략)
 
     public String createAccessToken(Authentication authentication) {
         String authorities = authentication.getAuthorities().stream()
@@ -77,7 +74,6 @@ public class JwtTokenProvider {
 
         UserDetails principal = new User(claims.getSubject(), "", authorities);
 
-        // 4. Spring Security의 UsernamePasswordAuthenticationToken 반환
         return new UsernamePasswordAuthenticationToken(principal, token, authorities);
     }
 

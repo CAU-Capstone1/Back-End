@@ -10,7 +10,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.concurrent.TimeUnit; // ⬅️ TimeUnit import
+import java.util.concurrent.TimeUnit;
 
 
 @Service
@@ -20,7 +20,6 @@ public class JobService {
     private final AudioRepository audioRepository;
     private final S3Service s3Service;
 
-    // ⭐️ 생성자 주입
     public JobService(JobRepository jobRepository, AudioRepository audioRepository, S3Service s3Service) {
         this.jobRepository = jobRepository;
         this.audioRepository = audioRepository;
@@ -44,9 +43,8 @@ public class JobService {
                 Audio finalAudio = optionalAudio.get();
                 String s3Key = finalAudio.getFilePath();
 
-                // 🌟 [수정] 유효 기간을 5분(TimeUnit.MINUTES)에서 7일(TimeUnit.DAYS)로 변경 🌟
-                // 7일은 AWS S3 Pre-signed URL의 최대 유효 기간입니다.
-                musicUrl = s3Service.generatePresignedUrl(s3Key, 7, TimeUnit.DAYS); // <--- 이 부분을 수정합니다.
+
+                musicUrl = s3Service.generatePresignedUrl(s3Key, 7, TimeUnit.DAYS);
             }
         }
 
@@ -55,7 +53,7 @@ public class JobService {
                 job.getStatus(),
                 job.getProgress(),
                 job.getErrorMessage(),
-                musicUrl // ⬅️ 이 필드에 S3 URL이 담겨 프론트엔드로 전달됩니다.
+                musicUrl
         );
     }
 

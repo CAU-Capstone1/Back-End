@@ -21,23 +21,16 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    // 🚨 [수정] 응답 타입을 LoginResponse로 변경하고, 회원가입 후 자동 로그인 처리
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            // 1. 회원가입 처리 (DB 저장)
             User user = authService.register(request);
 
-            // 2. 자동 로그인 처리 및 토큰 발급
-            // LoginRequest를 수동 생성하여 authenticate를 호출합니다.
-            // (LoginRequest에 email, password를 인자로 받는 생성자가 있다고 가정합니다.)
             LoginRequest loginRequest = new LoginRequest(request.getEmail(), request.getPassword());
             LoginResponse response = authService.authenticate(loginRequest);
 
-            // 3. 201 Created와 LoginResponse 반환
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (IllegalArgumentException e) {
-            // 이메일 중복 등의 오류 시 400 Bad Request 처리
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
         } catch (Exception e) {
