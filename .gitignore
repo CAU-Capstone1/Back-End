@@ -36,3 +36,12 @@ out/
 ### VS Code ###
 .vscode/
 .DS_Store
+
+### Secrets ###
+src/main/resources/application.properties
+src/main/resources/application-*.properties
+.env
+.env.*
+*.pem
+*.p12
+*.jks
