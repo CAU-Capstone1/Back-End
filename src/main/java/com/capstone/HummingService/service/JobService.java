@@ -6,7 +6,7 @@ import com.capstone.HummingService.domain.enums.JobStatus;
 import com.capstone.HummingService.dto.response.JobStatusResponse;
 import com.capstone.HummingService.repository.AudioRepository;
 import com.capstone.HummingService.repository.JobRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,7 +28,7 @@ public class JobService {
         this.s3Service = s3Service;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public JobStatusResponse getJobStatus(String publicJobId, Long userId) {
         // 다른 사용자의 Job은 존재 여부도 드러나지 않도록 404로 응답
         Job job = jobRepository.findByPublicJobId(publicJobId)
