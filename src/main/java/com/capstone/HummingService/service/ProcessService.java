@@ -29,6 +29,9 @@ public class ProcessService {
     static final int MIN_DURATION_SEC = 1;
     static final int MAX_DURATION_SEC = 30;
 
+    // 한 사용자가 대기열을 독점하지 않도록 동시에 진행할 수 있는 작업 수 제한
+    static final int MAX_ACTIVE_JOBS_PER_USER = 2;
+
     private final JobRepository jobRepository;
     private final ComposeProcessRepository composeProcessRepository;
     private final IdGenerator idGenerator;
@@ -84,6 +87,12 @@ public class ProcessService {
         if (durationSec < MIN_DURATION_SEC || durationSec > MAX_DURATION_SEC) {
             throw new IllegalArgumentException(
                     "길이(duration)는 " + MIN_DURATION_SEC + "~" + MAX_DURATION_SEC + "초 사이여야 합니다: " + durationSec);
+        }
+
+        long activeJobs = jobRepository.countByUserIdAndStatusIn(userId, List.of(JobStatus.QUEUED, JobStatus.PROCESSING));
+        if (activeJobs >= MAX_ACTIVE_JOBS_PER_USER) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "진행 중인 작곡 요청이 끝난 뒤 다시 시도해 주세요. (동시 최대 " + MAX_ACTIVE_JOBS_PER_USER + "개)");
         }
 
         // 2. ComposeProcess 생성 및 모든 데이터 매핑

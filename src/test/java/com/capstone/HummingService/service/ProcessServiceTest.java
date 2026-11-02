@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -90,6 +91,19 @@ class ProcessServiceTest {
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
         verifyNoInteractions(jobRepository, composeWorker);
+    }
+
+    @Test
+    void 진행_중인_작업이_한도에_도달하면_429를_반환한다() {
+        when(audioService.isUploadedBy("humming/1/a.mp3", 1L)).thenReturn(true);
+        when(jobRepository.countByUserIdAndStatusIn(eq(1L), any())).thenReturn((long) ProcessService.MAX_ACTIVE_JOBS_PER_USER);
+
+        assertThatThrownBy(() -> processService.composeWithSongForm(request("humming/1/a.mp3"), 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        verify(jobRepository, never()).save(any());
+        verifyNoInteractions(composeWorker);
     }
 
     @Test
