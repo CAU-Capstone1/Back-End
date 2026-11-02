@@ -37,7 +37,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/api/test",
                                 "/callback/**", // CallbackController에서 시크릿 헤더로 별도 검증
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
