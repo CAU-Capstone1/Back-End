@@ -1,27 +1,24 @@
 package com.capstone.HummingService.service;
 
-import com.capstone.HummingService.domain.Audio;
 import com.capstone.HummingService.domain.ComposeProcess;
 import com.capstone.HummingService.domain.Job;
-import com.capstone.HummingService.domain.enums.AudioType;
 import com.capstone.HummingService.domain.enums.JobStatus;
 import com.capstone.HummingService.domain.enums.ProcessStatus;
 import com.capstone.HummingService.dto.request.ComposeRequest;
 import com.capstone.HummingService.dto.response.ComposeResponse;
-import com.capstone.HummingService.port.ai.AiClientPort;
-import com.capstone.HummingService.repository.AudioRepository;
 import com.capstone.HummingService.repository.ComposeProcessRepository;
 import com.capstone.HummingService.repository.JobRepository;
 import com.capstone.HummingService.support.IdGenerator;
-import jakarta.transaction.Transactional;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ProcessService {
@@ -30,48 +27,54 @@ public class ProcessService {
 
     private final JobRepository jobRepository;
     private final ComposeProcessRepository composeProcessRepository;
-    private final AiClientPort aiClient;
     private final IdGenerator idGenerator;
     private final AudioService audioService;
-    private final S3Service s3Service;
-    private final AudioRepository audioRepository;
+    private final ComposeWorker composeWorker;
 
     // 생성자 주입
     public ProcessService(JobRepository jobRepository,
                           ComposeProcessRepository composeProcessRepository,
-                          AiClientPort aiClient,
                           IdGenerator idGenerator,
                           AudioService audioService,
-                          S3Service s3Service,
-                          AudioRepository audioRepository) {
+                          ComposeWorker composeWorker) {
         this.jobRepository = jobRepository;
         this.composeProcessRepository = composeProcessRepository;
-        this.aiClient = aiClient;
         this.idGenerator = idGenerator;
         this.audioService = audioService;
-        this.s3Service = s3Service;
-        this.audioRepository = audioRepository;
+        this.composeWorker = composeWorker;
     }
 
-    @Transactional
+    // Job만 생성하고 바로 반환한다. 실제 생성은 ComposeWorker가 백그라운드에서 수행하며,
+    // 클라이언트는 /api/job/{jobId}를 폴링해 진행 상태와 결과 URL을 확인한다.
+    // AI 호출을 트랜잭션 밖으로 빼기 위해 이 메서드에는 @Transactional을 걸지 않는다.
     public ComposeResponse composeWithSongForm(ComposeRequest request, Long userId) {
 
-        // 1. 파일 경로 처리
-        List<String> hummingPaths = Arrays.asList(
+        // 1. 파일 경로 처리 및 검증 (본인이 업로드한 파일만 사용 가능)
+        List<String> hummingPaths = Stream.of(
                         request.getHummingStart(),
                         request.getHummingMain(),
                         request.getHummingEnd()
-                ).stream()
+                )
                 .filter(path -> path != null && !path.trim().isEmpty())
                 .collect(Collectors.toList());
 
+        if (hummingPaths.isEmpty()) {
+            throw new IllegalArgumentException("허밍 파일을 1개 이상 업로드해 주세요.");
+        }
+
         String imagePath = request.getReferenceVisual();
+        boolean hasImage = imagePath != null && !imagePath.trim().isEmpty();
+
+        if (hummingPaths.stream().anyMatch(path -> !audioService.isUploadedBy(path, userId))
+                || (hasImage && !audioService.isUploadedBy(imagePath, userId))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인이 업로드한 파일만 사용할 수 있습니다.");
+        }
 
         Integer durationSec;
         try {
             durationSec = Integer.parseInt(request.getDuration());
         } catch (NumberFormatException e) {
-            throw new RuntimeException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
+            throw new IllegalArgumentException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
         }
 
         // 2. ComposeProcess 생성 및 모든 데이터 매핑
@@ -85,13 +88,7 @@ public class ProcessService {
         composeProcess.setDurationSec(durationSec);
         composeProcess.setKeyInfo(request.getKey());
         composeProcess.setTempoInfo(request.getTempo());
-
-        if (request.getInstrument() != null) {
-            composeProcess.setInstruments(request.getInstrument());
-        } else {
-            composeProcess.setInstruments(null);
-        }
-
+        composeProcess.setInstruments(request.getInstrument());
         composeProcess.setStatus(ProcessStatus.CREATED);
         composeProcessRepository.save(composeProcess);
 
@@ -108,85 +105,22 @@ public class ProcessService {
         composeProcess.setLastJobId(job.getPublicJobId());
         composeProcessRepository.save(composeProcess);
 
-
-        // 4. AI Client Port를 통해 AI 작곡 모듈에 요청 전송 및 결과 처리
-        logger.info("AI 요청 시작: JobId={}", job.getPublicJobId());
-
+        // 4. 백그라운드 작업 등록 (대기열이 가득 차면 실패 처리 후 503 응답)
         try {
-            // 4-1. AI 서버에 요청을 보내고, 생성된 BGM 파일의 byte[] 데이터를 응답으로 받음
-            byte[] bgmFileData = aiClient.composeWithSongForm(
-                    job.getPublicJobId(),
-                    request.getHummingStart(),
-                    request.getHummingMain(),
-                    request.getHummingEnd(),
-                    imagePath,
-                    request.getStyle(),
-                    request.getMood(),
-                    durationSec,
-                    request.getKey(),
-                    request.getTempo(),
-                    request.getInstrument(),
-                    "" // prompt 인자
-            );
-
-            logger.info("AI 요청 전송 및 BGM 데이터 수신 성공. JobId={}", job.getPublicJobId());
-
-            // 4-2. BGM 파일 데이터를 S3에 업로드
-            String fileExtension = ".wav"; // AI 서버 응답 타입 가정
-            String s3FileName = job.getPublicJobId() + fileExtension;
-
-            String finalBgmS3Key = s3Service.uploadBytes(
-                    bgmFileData,
-                    "final-bgm/", // AI 결과물 저장 디렉토리
-                    s3FileName,
-                    "audio/wav"
-            );
-
-            logger.info("S3 업로드 완료: Key={}", finalBgmS3Key);
-
-            // 4-3.Audio 엔티티를 생성하고 S3 Key 및 메타데이터를 저장
-            Audio finalAudio = new Audio();
-            finalAudio.setFilePath(finalBgmS3Key);          // S3 Key 저장
-            finalAudio.setFileSize((long) bgmFileData.length); // 파일 크기
-            // finalAudio.setAudioLength(...)
-            finalAudio.setName(s3FileName);
-            finalAudio.setAudioType(AudioType.GENERATED);
-            finalAudio.setGenerTime(LocalDateTime.now());
-
-            Audio savedAudio = audioRepository.save(finalAudio);
-            Long finalAudioId = savedAudio.getId();
-
-
-            // 4-4. Job 및 ComposeProcess 상태 업데이트 및 Audio ID DB 저장
-            job.setStatus(JobStatus.SUCCEEDED);
-            job.setProgress(100.0);
-            job.setErrorMessage(null); // 성공 시 에러 메시지 초기화
-
-            job.setOutputAudioId(finalAudioId);
-
-            composeProcess.setStatus(ProcessStatus.DONE);
-
-            composeProcess.setAudioId(finalAudioId);
-
-            // 4-5. 상태 저장
-            jobRepository.save(job);
-            composeProcessRepository.save(composeProcess);
-
-        } catch (Exception e) {
-            logger.error("BGM 생성 및 저장 중 최종 오류 발생 JobId={}: {}", job.getPublicJobId(), e.getMessage(), e);
+            composeWorker.compose(job.getId(), composeProcess.getId(), request, durationSec);
+        } catch (TaskRejectedException e) {
+            logger.warn("작곡 대기열이 가득 차 요청을 거절합니다. JobId={}", job.getPublicJobId());
 
             job.setStatus(JobStatus.FAILED);
-            job.setProgress(0.0);
-            job.setErrorMessage(e.getMessage());
+            job.setErrorMessage("요청이 많아 잠시 후 다시 시도해 주세요.");
             composeProcess.setStatus(ProcessStatus.FAILED);
-
             jobRepository.save(job);
             composeProcessRepository.save(composeProcess);
 
-            throw new RuntimeException("BGM 생성 및 저장 실패", e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "요청이 많아 잠시 후 다시 시도해 주세요.");
         }
 
-        // 5. 클라이언트에 작업 상태 응답 반환
+        // 5. 클라이언트에 작업 ID 반환 (상태: QUEUED)
         return new ComposeResponse(job.getPublicJobId(), job.getStatus());
     }
 }
