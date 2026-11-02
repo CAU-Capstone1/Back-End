@@ -12,6 +12,8 @@ spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 # 2.1. JPA/Hibernate 설정
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=true
+# API 서버이므로 요청 종료까지 DB 커넥션을 붙잡는 Open Session In View 비활성화
+spring.jpa.open-in-view=false
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
 
 # 3. JWT 설정
