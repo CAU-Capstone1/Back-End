@@ -8,6 +8,7 @@ import com.capstone.HummingService.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,7 +46,7 @@ public class AuthController {
             LoginResponse response = authService.authenticate(request);
             return ResponseEntity.ok(response);
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         } catch (Exception e) {
