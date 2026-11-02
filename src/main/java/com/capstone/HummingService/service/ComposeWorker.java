@@ -95,7 +95,7 @@ public class ComposeWorker {
             finalAudio.setFileSize((long) bgmFileData.length);
             finalAudio.setName(s3FileName);
             finalAudio.setAudioType(AudioType.GENERATED);
-            finalAudio.setGenerTime(LocalDateTime.now());
+            finalAudio.setCreateTime(LocalDateTime.now());
             Long finalAudioId = audioRepository.save(finalAudio).getId();
 
             // 5. Job 및 ComposeProcess 완료 처리
