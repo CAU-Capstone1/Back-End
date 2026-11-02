@@ -31,9 +31,9 @@ public class S3Service {
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
 
-    public S3Service(S3Client s3Client) {
+    public S3Service(S3Client s3Client, S3Presigner presigner) {
         this.s3Client = s3Client;
-        this.presigner = S3Presigner.create();
+        this.presigner = presigner;
     }
 
     public String uploadFile(MultipartFile file, String directoryPath) throws IOException {
