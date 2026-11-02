@@ -134,6 +134,14 @@ curl localhost:8080/api/job/<jobId> -H "Authorization: Bearer $TOKEN"
 | GET | `/api/job/{jobId}` | JWT | 작업 상태·결과 URL 조회 (본인 작업만) |
 | POST | `/callback` | 시크릿 헤더 | AI 서버 → 백엔드 진행 상태 콜백 |
 
+**작곡 요청 제한**
+
+- 길이(`duration`): 1~30초 (범위 밖이면 400)
+- 사용자당 동시 진행 작업: 최대 2개 (초과 시 429)
+- 전체 대기열이 가득 차면 503
+- 진행률(`progress`): 요청 시작 10 → 음원 생성 완료 80 → 저장 완료 100
+- 서버가 재시작되면 중단된 작업은 `FAILED`로 정리되며, 다시 요청해야 합니다.
+
 ---
 
 ## 기술 스택
