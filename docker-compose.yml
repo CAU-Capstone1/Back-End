@@ -1,4 +1,5 @@
-# 로컬 개발 환경: RDS → MySQL, S3 → S3Mock, AI 서버(MusicGen) → 가짜 AI 서버
+# 로컬 개발 환경: RDS → MySQL, S3 → S3Mock
+# AI 서버는 CAU-Capstone1/AI 저장소를 별도로 실행 (localhost:7860, README 참고)
 # 실행: docker compose up -d && ./gradlew bootRun --args='--spring.profiles.active=local'
 services:
   mysql:
@@ -30,15 +31,6 @@ services:
     volumes:
       - s3-data:/s3mockroot
 
-  fake-ai:
-    image: python:3.12-slim
-    command: python /app/server.py
-    environment:
-      FAKE_AI_DELAY_SEC: "3"
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./local/fake-ai:/app:ro
 
 volumes:
   mysql-data:
