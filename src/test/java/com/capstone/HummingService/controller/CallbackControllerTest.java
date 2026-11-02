@@ -14,7 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class CallbackControllerTest {
 
     private final CallbackService callbackService = mock(CallbackService.class);
-    private final CallbackRequest request = new CallbackRequest("job_abc", JobStatus.PROCESSING, 50.0, null, null, null, null);
+    private final CallbackRequest request = new CallbackRequest("job_abc", JobStatus.PROCESSING, 50.0, null, null);
 
     @Test
     void 시크릿이_일치하면_콜백을_처리한다() {

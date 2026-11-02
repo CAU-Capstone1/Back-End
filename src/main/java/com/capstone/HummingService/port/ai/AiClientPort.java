@@ -1,20 +1,7 @@
 package com.capstone.HummingService.port.ai;
 
-import java.io.IOException;
 public interface AiClientPort {
 
-    byte[] composeWithSongForm(
-            String publicJobId,
-            String hummingStartPath,
-            String hummingMainPath,
-            String hummingEndPath,
-            String imagePath,
-            String style,
-            String mood,
-            Integer durationSec,
-            String keyInfo,
-            String tempoInfo,
-            String instrument,
-            String prompt
-    ) throws IOException;
+    // 허밍 멜로디(S3 key)와 텍스트 설명으로 음악을 생성하고, 생성된 WAV 데이터를 반환한다
+    byte[] compose(String publicJobId, String melodyS3Key, String description, int durationSec);
 }

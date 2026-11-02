@@ -28,10 +28,6 @@ public class ComposeProcess {
     @Column(nullable = false)
     private String hummingPath;
 
-    // 사용자가 선택한 곡 구조 순서 정보
-    @Lob
-    private String songFormInfo;
-
     private String imagePath;
 
     @Column(length = 50)
@@ -51,9 +47,6 @@ public class ComposeProcess {
 
     @Lob
     private String instruments; // 악기 목록
-
-    @Column(columnDefinition = "TEXT") // 텍스트 프롬프트 저장
-    private String prompt;
 
 
     @Enumerated(EnumType.STRING)
@@ -95,9 +88,6 @@ public class ComposeProcess {
     public String getHummingPath() { return hummingPath; }
     public void setHummingPath(String hummingPath) { this.hummingPath = hummingPath; }
 
-    public String getSongFormInfo() { return songFormInfo; }
-    public void setSongFormInfo(String songFormInfo) { this.songFormInfo = songFormInfo; }
-
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
@@ -118,9 +108,6 @@ public class ComposeProcess {
 
     public String getInstruments() { return instruments; }
     public void setInstruments(String instruments) { this.instruments = instruments; }
-
-    public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
 
     public ProcessStatus getStatus() { return status; }
     public void setStatus(ProcessStatus status) { this.status = status; }

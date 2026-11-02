@@ -47,7 +47,7 @@ class AudioServiceTest {
     @Test
     void 본인이_업로드한_key만_소유한_것으로_판단한다() {
         assertThat(audioService.isUploadedBy("humming/7/1_hum.mp3", 7L)).isTrue();
-        assertThat(audioService.isUploadedBy("image/7/1_cover.png", 7L)).isTrue();
+        assertThat(audioService.isUploadedBy("image/7/1_cover.png", 7L)).isFalse(); // 이미지 업로드 기능 없음
 
         assertThat(audioService.isUploadedBy("humming/8/1_hum.mp3", 7L)).isFalse();
         assertThat(audioService.isUploadedBy("humming/77/1_hum.mp3", 7L)).isFalse(); // prefix 부분 일치 방지

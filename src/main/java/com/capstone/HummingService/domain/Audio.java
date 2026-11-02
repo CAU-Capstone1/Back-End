@@ -59,11 +59,11 @@ public class Audio {
         this.audioLength = audioLength;
     }
 
-    public LocalDateTime getGenerTime() {
+    public LocalDateTime getCreateTime() {
         return createTime;
     }
 
-    public void setGenerTime(LocalDateTime createTime) {
+    public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
     }
 

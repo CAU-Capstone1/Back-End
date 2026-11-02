@@ -3,7 +3,6 @@ package com.capstone.HummingService.port.ai.impl;
 import com.capstone.HummingService.port.ai.AiClientPort;
 import com.capstone.HummingService.service.AudioService;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -13,10 +12,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.IOException;
-import java.util.stream.Stream;
 
 @Component
 public class AiClientHttp implements AiClientPort {
@@ -24,14 +19,6 @@ public class AiClientHttp implements AiClientPort {
     private static final Logger logger = LoggerFactory.getLogger(AiClientHttp.class);
     private final WebClient aiWebClient;
     private final AudioService audioService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Value("${server.callback-host}")
-    private String callbackHost;
-
-    @Value("${server.port}")
-    private String serverPort;
-
 
     public AiClientHttp(@Qualifier("aiWebClient") WebClient aiWebClient, AudioService audioService) {
         this.aiWebClient = aiWebClient;
@@ -39,36 +26,15 @@ public class AiClientHttp implements AiClientPort {
     }
 
     @Override
-    public byte[] composeWithSongForm(
-            String publicJobId,
-            String hummingStartPath,
-            String hummingMainPath,
-            String hummingEndPath,
-
-            String imagePath,
-            String style,
-            String mood,
-            Integer durationSec,
-            String keyInfo,
-            String tempoInfo,
-            String instrument,
-            String prompt
-    ) throws IOException {
-
-        // AI 서버는 멜로디 파일 1개만 받으므로 main을 우선 사용하고, 없으면 start → end 순으로 대체
-        String s3KeyToDownload = Stream.of(hummingMainPath, hummingStartPath, hummingEndPath)
-                .filter(path -> path != null && !path.isBlank())
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("허밍 파일이 없습니다."));
-
+    public byte[] compose(String publicJobId, String melodyS3Key, String description, int durationSec) {
         try {
             // 1. S3에서 파일 다운로드 (byte 배열로 받음)
-            logger.info("S3 Download Start for JobId={} | S3 Key: {}", publicJobId, s3KeyToDownload);
-            byte[] hummingBytes = audioService.getAudioBytesByKey(s3KeyToDownload);
+            logger.info("S3 Download Start for JobId={} | S3 Key: {}", publicJobId, melodyS3Key);
+            byte[] hummingBytes = audioService.getAudioBytesByKey(melodyS3Key);
             ByteArrayResource hummingResource = new ByteArrayResource(hummingBytes) {
                 @Override
                 public String getFilename() {
-                    return s3KeyToDownload;
+                    return melodyS3Key;
                 }
             };
 
@@ -78,11 +44,10 @@ public class AiClientHttp implements AiClientPort {
                     .filename(hummingResource.getFilename())
                     .contentType(MediaType.parseMediaType("audio/mp3"));
 
-            String finalDescription = (prompt != null && !prompt.isEmpty()) ? prompt : "Generate music based on style: " + style + ", mood: " + mood;
-            builder.part("description", finalDescription);
-            builder.part("duration", durationSec.toString());
+            builder.part("description", description);
+            builder.part("duration", String.valueOf(durationSec));
 
-            logger.info("AI Request: Path=/generate, ContentType=multipart/form-data, Description={}", finalDescription);
+            logger.info("AI Request: Path=/generate, ContentType=multipart/form-data, Description={}", description);
 
             // 3. WebClient 요청 및 응답 데이터 처리
             byte[] bgmFileData = aiWebClient.post()

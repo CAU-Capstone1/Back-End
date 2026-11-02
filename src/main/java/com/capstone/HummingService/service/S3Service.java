@@ -15,8 +15,6 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -86,15 +84,6 @@ public class S3Service {
             log.error("S3 Bytes Upload Failed: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload byte array to S3: " + e.getMessage());
         }
-    }
-
-    public String getFileUrl(String fileKey) {
-        String encodedKey = URLEncoder.encode(fileKey, StandardCharsets.UTF_8).replace("+", "%20");
-
-        return String.format("https://%s.s3.%s.amazonaws.com/%s",
-                bucketName,
-                s3Client.serviceClientConfiguration().region().id(),
-                encodedKey);
     }
 
     public byte[] downloadFile(String fileKey) {

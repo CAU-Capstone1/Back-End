@@ -7,7 +7,7 @@ import com.capstone.HummingService.dto.request.CallbackRequest;
 import com.capstone.HummingService.repository.ComposeProcessRepository;
 import com.capstone.HummingService.repository.JobRepository;
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import com.capstone.HummingService.domain.enums.ProcessStatus;
 
 
@@ -62,9 +62,6 @@ public class CallbackService {
             if (req.audioId() != null) {
                 job.setOutputAudioId(req.audioId());
                 process.setAudioId(req.audioId());
-            }
-
-            if (req.audioUrl() != null) {
             }
 
             process.setStatus(ProcessStatus.DONE);

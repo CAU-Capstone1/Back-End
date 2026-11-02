@@ -4,8 +4,6 @@ import com.capstone.HummingService.domain.enums.JobStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record CallbackRequest(@NotBlank String jobId, @NotNull JobStatus status, Double progress, Long audioId, String audioUrl, String message, String signature   ) {
+// AI 서버 → 백엔드: 작업 진행/완료/실패 상태 콜백 (인증은 X-Callback-Secret 헤더로 수행)
+public record CallbackRequest(@NotBlank String jobId, @NotNull JobStatus status, Double progress, Long audioId, String message) {
 }
-
-// ai -> 백엔드로 주는 request
-// AI 서버가 Job 완료(또는 실패) 후 결과를 백엔드에 보내는 용도.

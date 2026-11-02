@@ -85,6 +85,18 @@ class SecurityConfigTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"a@b.com\",\"password\":\"wrong-password\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않습니다."));
+    }
+
+    @Test
+    void 이미_가입된_이메일로_회원가입하면_400과_메시지를_반환한다() throws Exception {
+        when(authService.register(any())).thenThrow(new IllegalArgumentException("이미 사용 중인 이메일입니다: a@b.com"));
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"a@b.com\",\"password\":\"password1\",\"name\":\"tester\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("이미 사용 중인 이메일입니다: a@b.com"));
     }
 }

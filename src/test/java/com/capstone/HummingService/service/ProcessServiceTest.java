@@ -58,7 +58,7 @@ class ProcessServiceTest {
 
         ComposeResponse res = processService.composeWithSongForm(request, 1L);
 
-        assertThat(res.PublicJobId()).isEqualTo("job_abc");
+        assertThat(res.jobId()).isEqualTo("job_abc");
         assertThat(res.status()).isEqualTo(JobStatus.QUEUED);
         verify(composeWorker).compose(any(), any(), eq(request), eq(30));
     }
