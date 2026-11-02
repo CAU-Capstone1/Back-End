@@ -18,7 +18,6 @@ spring.jpa.open-in-view=false
 # 3. JWT 설정
 jwt.secret=<JWT_SECRET_BASE64>
 jwt.access-token-expiration-in-milliseconds=1800000
-jwt.refresh-token-expiration-in-milliseconds=604800000
 
 # 4. AI 서버 URL (Hugging Face Space 등)
 ai.base-url=<AI_SERVER_URL>

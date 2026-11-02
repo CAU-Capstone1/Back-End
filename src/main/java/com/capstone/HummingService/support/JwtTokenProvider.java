@@ -23,15 +23,12 @@ public class JwtTokenProvider {
 
     private final Key key;
     private final long accessTokenExpirationTime;
-    private final long refreshTokenExpirationTime;
 
     private static final String AUTHORITIES_KEY = "auth";
-    private static final String BEARER_TYPE = "Bearer";
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secretKey,
-            @Value("${jwt.access-token-expiration-in-milliseconds}") long accessTokenExpirationTime,
-            @Value("${jwt.refresh-token-expiration-in-milliseconds}") long refreshTokenExpirationTime) {
+            @Value("${jwt.access-token-expiration-in-milliseconds}") long accessTokenExpirationTime) {
 
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 
@@ -39,7 +36,6 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
 
         this.accessTokenExpirationTime = accessTokenExpirationTime;
-        this.refreshTokenExpirationTime = refreshTokenExpirationTime;
     }
 
 
