@@ -102,10 +102,10 @@ public class ComposeProcess {
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
     public String getStyle() { return style; }
-    public void setStyle(String genre) { this.style = style; }
+    public void setStyle(String style) { this.style = style; }
 
     public String getMood() { return mood; }
-    public void setMood(String Mood) { this.mood = mood; }
+    public void setMood(String mood) { this.mood = mood; }
 
     public Integer getDurationSec() { return durationSec; }
     public void setDurationSec(Integer durationSec) { this.durationSec = durationSec; }

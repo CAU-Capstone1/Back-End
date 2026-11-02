@@ -63,7 +63,7 @@ public class Audio {
         return createTime;
     }
 
-    public void setGenerTime(LocalDateTime generTime) {
+    public void setGenerTime(LocalDateTime createTime) {
         this.createTime = createTime;
     }
 
