@@ -31,14 +31,16 @@ public class S3Service {
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucketName;
 
-    public S3Service(S3Client s3Client) {
+    public S3Service(S3Client s3Client, S3Presigner presigner) {
         this.s3Client = s3Client;
-        this.presigner = S3Presigner.create();
+        this.presigner = presigner;
     }
 
     public String uploadFile(MultipartFile file, String directoryPath) throws IOException {
         String originalFilename = file.getOriginalFilename();
-        String fileKey = directoryPath + System.currentTimeMillis() + "_" + originalFilename;
+        // 원본 파일명은 사용자 입력이므로 경로 문자 등을 제거한 뒤 key에 사용
+        String safeFilename = originalFilename == null ? "file" : originalFilename.replaceAll("[^A-Za-z0-9._-]", "_");
+        String fileKey = directoryPath + System.currentTimeMillis() + "_" + safeFilename;
 
         try {
             log.info("S3 Upload Start: Bucket={} Key={} Size={}", bucketName, fileKey, file.getSize());

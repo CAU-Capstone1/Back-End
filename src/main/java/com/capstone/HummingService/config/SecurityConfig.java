@@ -1,10 +1,9 @@
 package com.capstone.HummingService.config;
 
-import com.capstone.HummingService.service.UserDetailsServiceCustom;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -12,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import java.util.Arrays;
 import org.springframework.web.cors.CorsConfiguration;
@@ -22,11 +22,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsServiceCustom userDetailsServiceCustom;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, UserDetailsServiceCustom userDetailsServiceCustom) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.userDetailsServiceCustom = userDetailsServiceCustom;
     }
 
     @Bean
@@ -40,14 +38,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/test",
-                                "/callback/**",
-                                "/jobs/**",
+                                "/callback/**", // CallbackController에서 시크릿 헤더로 별도 검증
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**",
-
-                                "/api/upload",
-                                "/api/compose/full-upload",
-                                "/api/compose"
+                                "/v3/api-docs/**"
                         ).permitAll()
 
                         .requestMatchers("/api/**").authenticated()
@@ -57,6 +50,9 @@ public class SecurityConfig {
 
                 .formLogin(login -> login.disable())
                 .httpBasic(basic -> basic.disable())
+
+                // 인증 없이 보호된 API 호출 시 기본값(403) 대신 401 반환
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -91,16 +87,10 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    // UserDetailsService(UserDetailsServiceCustom)와 PasswordEncoder 빈이 있으면
+    // Spring Security가 DaoAuthenticationProvider를 자동 구성한다
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsServiceCustom);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
     }
 }

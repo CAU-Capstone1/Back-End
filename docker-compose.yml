@@ -1,0 +1,37 @@
+# 로컬 개발 환경: RDS → MySQL, S3 → S3Mock
+# AI 서버는 CAU-Capstone1/AI 저장소를 별도로 실행 (localhost:7860, README 참고)
+# 실행: docker compose up -d && ./gradlew bootRun --args='--spring.profiles.active=local'
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: humming
+      MYSQL_USER: humming
+      MYSQL_PASSWORD: humming
+      MYSQL_ROOT_PASSWORD: root
+      TZ: Asia/Seoul
+    ports:
+      - "3307:3306" # 로컬에 설치된 MySQL(3306)과 충돌 방지
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      retries: 20
+
+  # S3 호환 목 서버 (버킷 자동 생성, 인증 정보 검증 안 함)
+  s3:
+    image: adobe/s3mock:5.2.3
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: humming-local
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+    ports:
+      - "9090:9090"
+    volumes:
+      - s3-data:/s3mockroot
+
+
+volumes:
+  mysql-data:
+  s3-data:

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.stream.Stream;
 
 @Component
 public class AiClientHttp implements AiClientPort {
@@ -54,7 +55,11 @@ public class AiClientHttp implements AiClientPort {
             String prompt
     ) throws IOException {
 
-        String s3KeyToDownload = hummingMainPath;
+        // AI 서버는 멜로디 파일 1개만 받으므로 main을 우선 사용하고, 없으면 start → end 순으로 대체
+        String s3KeyToDownload = Stream.of(hummingMainPath, hummingStartPath, hummingEndPath)
+                .filter(path -> path != null && !path.isBlank())
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("허밍 파일이 없습니다."));
 
         try {
             // 1. S3에서 파일 다운로드 (byte 배열로 받음)
@@ -87,6 +92,10 @@ public class AiClientHttp implements AiClientPort {
                     .retrieve()
                     .bodyToMono(byte[].class)
                     .block();
+
+            if (bgmFileData == null || bgmFileData.length == 0) {
+                throw new IllegalStateException("AI 서버가 빈 응답을 반환했습니다.");
+            }
 
             logger.info("AI 요청 전송 및 BGM 데이터 수신 성공: JobId={} | Data Size={}", publicJobId, bgmFileData.length);
 
