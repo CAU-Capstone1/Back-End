@@ -35,6 +35,11 @@ public class CallbackService {
         ComposeProcess process = composeProcessRepository.findById(job.getProcessId())
                 .orElseThrow(() -> new IllegalStateException("ComposeProcess not found: " + job.getProcessId()));
 
+        // 이미 완료/실패로 끝난 Job은 늦게 도착한 콜백으로 상태가 뒤집히지 않도록 무시
+        if (job.getStatus() == JobStatus.SUCCEEDED || job.getStatus() == JobStatus.FAILED) {
+            return;
+        }
+
         // 3) 상태 분기
         JobStatus status = req.status();
         if (status == JobStatus.PROCESSING) {
