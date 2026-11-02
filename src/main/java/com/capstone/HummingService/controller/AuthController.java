@@ -6,6 +6,8 @@ import com.capstone.HummingService.dto.response.LoginResponse;
 import com.capstone.HummingService.dto.request.RegisterRequest;
 import com.capstone.HummingService.service.AuthService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
 
@@ -35,6 +39,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
         } catch (Exception e) {
+            logger.error("회원가입 처리 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -50,6 +55,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         } catch (Exception e) {
+            logger.error("로그인 처리 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
