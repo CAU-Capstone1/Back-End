@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -67,7 +68,7 @@ class ComposeWorkerTest {
     @Test
     void 생성에_성공하면_결과를_S3와_DB에_저장하고_SUCCEEDED로_변경한다() throws Exception {
         byte[] wav = {1, 2, 3};
-        when(aiClient.composeWithSongForm(eq("job_abc"), any(), any(), any(), any(), any(), any(), eq(30), any(), any(), any(), any()))
+        when(aiClient.compose(eq("job_abc"), eq("humming/1/a.mp3"), any(), eq(30)))
                 .thenReturn(wav);
         when(s3Service.uploadBytes(wav, "final-bgm/", "job_abc.wav", "audio/wav")).thenReturn("final-bgm/job_abc.wav");
         when(audioRepository.save(any(Audio.class))).thenAnswer(invocation -> {
@@ -87,7 +88,7 @@ class ComposeWorkerTest {
 
     @Test
     void AI_호출이_실패하면_FAILED와_에러_메시지가_기록된다() throws Exception {
-        when(aiClient.composeWithSongForm(anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(aiClient.compose(anyString(), any(), any(), anyInt()))
                 .thenThrow(new RuntimeException("AI 서버 응답 시간 초과"));
 
         composeWorker.compose(1L, 2L, request, 30);

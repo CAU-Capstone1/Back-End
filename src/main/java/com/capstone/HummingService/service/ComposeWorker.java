@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.stream.Stream;
 
 // AI 작곡 요청을 백그라운드에서 실행한다.
 // AI 호출(수십 초)은 트랜잭션 밖에서 수행하고, 상태 변경은 각 단계마다 바로 저장해 실패 기록이 롤백되지 않도록 한다.
@@ -65,20 +66,8 @@ public class ComposeWorker {
 
         try {
             // 2. AI 서버에 요청을 보내고, 생성된 BGM 파일의 byte[] 데이터를 응답으로 받음
-            byte[] bgmFileData = aiClient.composeWithSongForm(
-                    job.getPublicJobId(),
-                    request.getHummingStart(),
-                    request.getHummingMain(),
-                    request.getHummingEnd(),
-                    request.getReferenceVisual(),
-                    request.getStyle(),
-                    request.getMood(),
-                    durationSec,
-                    request.getKey(),
-                    request.getTempo(),
-                    request.getInstrument(),
-                    "" // prompt 인자
-            );
+            byte[] bgmFileData = aiClient.compose(
+                    job.getPublicJobId(), selectMelody(request), buildDescription(request), durationSec);
 
             job.setProgress(PROGRESS_GENERATED);
             jobRepository.save(job);
@@ -116,5 +105,17 @@ public class ComposeWorker {
 
         jobRepository.save(job);
         composeProcessRepository.save(composeProcess);
+    }
+
+    // AI 서버는 멜로디 파일 1개만 받으므로 main을 우선 사용하고, 없으면 start → end 순으로 대체
+    static String selectMelody(ComposeRequest request) {
+        return Stream.of(request.getHummingMain(), request.getHummingStart(), request.getHummingEnd())
+                .filter(path -> path != null && !path.isBlank())
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("허밍 파일이 없습니다."));
+    }
+
+    static String buildDescription(ComposeRequest request) {
+        return "Generate music based on style: " + request.getStyle() + ", mood: " + request.getMood();
     }
 }
