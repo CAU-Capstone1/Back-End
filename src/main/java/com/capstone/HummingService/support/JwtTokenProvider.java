@@ -3,6 +3,8 @@ package com.capstone.HummingService.support;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     private final Key key;
     private final long accessTokenExpirationTime;
@@ -78,14 +82,11 @@ public class JwtTokenProvider {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
-        } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
-
         } catch (ExpiredJwtException e) {
-
-        } catch (UnsupportedJwtException e) {
-
-        } catch (IllegalArgumentException e) {
-
+            logger.debug("만료된 JWT: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            // 서명 불일치, 형식 오류, 지원하지 않는 토큰, 빈 토큰 등
+            logger.debug("유효하지 않은 JWT: {}", e.getMessage());
         }
         return false;
     }
