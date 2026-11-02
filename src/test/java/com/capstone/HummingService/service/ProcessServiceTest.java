@@ -64,6 +64,21 @@ class ProcessServiceTest {
     }
 
     @Test
+    void 키_템포_길이를_건너뛰면_기본_길이로_요청된다() {
+        ComposeRequest request = request("humming/1/a.mp3");
+        request.setKey(null);
+        request.setTempo(null);
+        request.setDuration(null);
+        when(audioService.isUploadedBy("humming/1/a.mp3", 1L)).thenReturn(true);
+        when(idGenerator.generate("job")).thenReturn("job_abc");
+
+        ComposeResponse res = processService.composeWithSongForm(request, 1L);
+
+        assertThat(res.status()).isEqualTo(JobStatus.QUEUED);
+        verify(composeWorker).compose(any(), any(), eq(request), eq(ProcessService.DEFAULT_DURATION_SEC));
+    }
+
+    @Test
     void 허밍_파일이_없으면_Job을_만들지_않는다() {
         assertThatThrownBy(() -> processService.composeWithSongForm(request(null), 1L))
                 .isInstanceOf(IllegalArgumentException.class);

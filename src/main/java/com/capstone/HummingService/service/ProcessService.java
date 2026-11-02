@@ -28,6 +28,7 @@ public class ProcessService {
     // MusicGen이 한 번에 생성할 수 있는 길이를 고려한 허용 범위 (초)
     static final int MIN_DURATION_SEC = 1;
     static final int MAX_DURATION_SEC = 30;
+    static final int DEFAULT_DURATION_SEC = 10; // 길이를 입력하지 않은 경우
 
     // 한 사용자가 대기열을 독점하지 않도록 동시에 진행할 수 있는 작업 수 제한
     static final int MAX_ACTIVE_JOBS_PER_USER = 2;
@@ -79,7 +80,8 @@ public class ProcessService {
 
         Integer durationSec;
         try {
-            durationSec = Integer.parseInt(request.getDuration());
+            String duration = request.getDuration();
+            durationSec = (duration == null || duration.isBlank()) ? DEFAULT_DURATION_SEC : Integer.parseInt(duration.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
         }
