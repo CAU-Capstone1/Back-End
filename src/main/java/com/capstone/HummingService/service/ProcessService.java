@@ -25,6 +25,10 @@ public class ProcessService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProcessService.class);
 
+    // MusicGen이 한 번에 생성할 수 있는 길이를 고려한 허용 범위 (초)
+    static final int MIN_DURATION_SEC = 1;
+    static final int MAX_DURATION_SEC = 30;
+
     private final JobRepository jobRepository;
     private final ComposeProcessRepository composeProcessRepository;
     private final IdGenerator idGenerator;
@@ -75,6 +79,11 @@ public class ProcessService {
             durationSec = Integer.parseInt(request.getDuration());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("길이(duration) 값이 숫자가 아닙니다: " + request.getDuration(), e);
+        }
+
+        if (durationSec < MIN_DURATION_SEC || durationSec > MAX_DURATION_SEC) {
+            throw new IllegalArgumentException(
+                    "길이(duration)는 " + MIN_DURATION_SEC + "~" + MAX_DURATION_SEC + "초 사이여야 합니다: " + durationSec);
         }
 
         // 2. ComposeProcess 생성 및 모든 데이터 매핑

@@ -11,6 +11,8 @@ import com.capstone.HummingService.repository.JobRepository;
 import com.capstone.HummingService.support.IdGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -63,6 +65,18 @@ class ProcessServiceTest {
     @Test
     void 허밍_파일이_없으면_Job을_만들지_않는다() {
         assertThatThrownBy(() -> processService.composeWithSongForm(request(null), 1L))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(jobRepository, composeWorker);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-5", "31", "100000", "abc"})
+    void 허용_범위를_벗어난_길이는_거부한다(String duration) {
+        ComposeRequest request = request("humming/1/a.mp3");
+        request.setDuration(duration);
+        when(audioService.isUploadedBy("humming/1/a.mp3", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> processService.composeWithSongForm(request, 1L))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(jobRepository, composeWorker);
     }
