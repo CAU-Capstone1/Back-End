@@ -93,6 +93,7 @@ class ComposeWorkerTest {
         composeWorker.compose(1L, 2L, request, 30);
 
         assertThat(job.getStatus()).isEqualTo(JobStatus.FAILED);
+        assertThat(job.getProgress()).isEqualTo(ComposeWorker.PROGRESS_STARTED); // 실패 지점의 진행률 유지
         assertThat(job.getErrorMessage()).isEqualTo("AI 서버 응답 시간 초과");
         assertThat(process.getStatus()).isEqualTo(ProcessStatus.FAILED);
         verifyNoInteractions(s3Service, audioRepository);

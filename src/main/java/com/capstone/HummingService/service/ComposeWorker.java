@@ -25,6 +25,9 @@ public class ComposeWorker {
 
     private static final Logger logger = LoggerFactory.getLogger(ComposeWorker.class);
 
+    static final double PROGRESS_STARTED = 10.0;   // AI 서버 요청 시작
+    static final double PROGRESS_GENERATED = 80.0; // 음원 생성 완료, 저장 중
+
     private final JobRepository jobRepository;
     private final ComposeProcessRepository composeProcessRepository;
     private final AudioRepository audioRepository;
@@ -50,8 +53,10 @@ public class ComposeWorker {
         ComposeProcess composeProcess = composeProcessRepository.findById(processId)
                 .orElseThrow(() -> new IllegalStateException("ComposeProcess not found: " + processId));
 
+        // 진행률은 AI 서버가 중간 진행 상황을 알려주지 않으므로 처리 단계 기준으로 기록한다
         // 1. 실행 시작 상태 기록
         job.setStatus(JobStatus.PROCESSING);
+        job.setProgress(PROGRESS_STARTED);
         composeProcess.setStatus(ProcessStatus.PROCESSING);
         jobRepository.save(job);
         composeProcessRepository.save(composeProcess);
@@ -74,6 +79,9 @@ public class ComposeWorker {
                     request.getInstrument(),
                     "" // prompt 인자
             );
+
+            job.setProgress(PROGRESS_GENERATED);
+            jobRepository.save(job);
 
             // 3. BGM 파일 데이터를 S3에 업로드
             String s3FileName = job.getPublicJobId() + ".wav"; // AI 서버 응답 타입 가정
