@@ -58,26 +58,6 @@ public class JobService {
                 musicUrl
         );
     }
-
-    @Transactional
-    public void updateJobStatus(String publicJobId, double progress, String errorMessage) {
-        Optional<Job> optionalJob = jobRepository.findByPublicJobId(publicJobId);
-        Job job = optionalJob.orElseThrow(() ->
-                new IllegalArgumentException("해당 Job ID를 찾을 수 없습니다: " + publicJobId)
-        );
-
-        if (progress >= 100.0) {
-            job.setProgress(100.0);
-        } else {
-            job.setProgress(progress);
-        }
-
-        if (errorMessage != null) {
-            job.setErrorMessage(errorMessage);
-        }
-
-        jobRepository.save(job);
-    }
 }
 
 

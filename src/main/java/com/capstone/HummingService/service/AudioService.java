@@ -24,18 +24,12 @@ public class AudioService {
         return audioPath;
     }
 
-    public String saveImage(MultipartFile file, Long userId) throws IOException {
-        String imagePath = s3Service.uploadFile(file, userUploadPrefix("image/", userId));
-        return imagePath;
-    }
-
-    // 사용자가 업로드한 파일은 {디렉토리}/{userId}/ 아래에 저장해 key만으로 소유자를 확인할 수 있게 한다
+    // 사용자가 업로드한 허밍은 humming/{userId}/ 아래에 저장해 key만으로 소유자를 확인할 수 있게 한다
     public boolean isUploadedBy(String s3Key, Long userId) {
         if (s3Key == null || s3Key.contains("..")) {
             return false;
         }
-        return s3Key.startsWith(userUploadPrefix("humming/", userId))
-                || s3Key.startsWith(userUploadPrefix("image/", userId));
+        return s3Key.startsWith(userUploadPrefix("humming/", userId));
     }
 
     private String userUploadPrefix(String directory, Long userId) {
