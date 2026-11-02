@@ -64,9 +64,6 @@ public class CallbackService {
                 process.setAudioId(req.audioId());
             }
 
-            if (req.audioUrl() != null) {
-            }
-
             process.setStatus(ProcessStatus.DONE);
             process.setLastJobId(job.getPublicJobId());
             return;

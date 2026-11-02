@@ -63,6 +63,6 @@ class CallbackServiceTest {
     }
 
     private CallbackRequest callback(JobStatus status, Double progress) {
-        return new CallbackRequest("job_abc", status, progress, null, null, null, null);
+        return new CallbackRequest("job_abc", status, progress, null, null);
     }
 }
