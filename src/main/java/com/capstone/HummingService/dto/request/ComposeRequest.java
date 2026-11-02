@@ -1,7 +1,5 @@
 package com.capstone.HummingService.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
-
 
 public class ComposeRequest {
 
@@ -9,13 +7,11 @@ public class ComposeRequest {
         private String mood; // 프론트의 mood
         private String instrument; // 프론트의 instrument (단일 악기로 가정)
 
-        @NotBlank(message = "키 정보를 입력해 주세요.")
+        // key, tempo, duration은 프론트에서 건너뛸 수 있는 선택 항목 (duration 미입력 시 기본값 사용)
         private String key;
 
-        @NotBlank(message = "템포 정보를 선택해 주세요.")
         private String tempo;
 
-        @NotBlank(message = "길이를 입력해 주세요.")
         private String duration;
 
         private String hummingStart;
