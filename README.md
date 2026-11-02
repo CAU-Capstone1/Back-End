@@ -29,7 +29,7 @@
 | 실행 프로필 | 기본 (지정 안 함) | `local` |
 | DB | AWS RDS (MySQL) | MySQL 8.4 컨테이너 |
 | 파일 저장소 | AWS S3 | Adobe S3Mock 컨테이너 |
-| AI 서버 | MusicGen 서버 | 가짜 AI 서버 (`local/fake-ai`) |
+| AI 서버 | Hugging Face Space ([CAU-Capstone1/AI](https://github.com/CAU-Capstone1/AI)) | 같은 AI 저장소를 로컬에서 실행 |
 | S3 인증 | EC2 IAM Role | 더미 값 (S3Mock은 검증하지 않음) |
 
 ### 1. AWS 환경에서 실행
@@ -39,7 +39,7 @@
 - **RDS (MySQL 8)**: `humming` 데이터베이스
 - **S3 버킷**: 서울 리전(`ap-northeast-2`)
 - **EC2**: S3 버킷 읽기/쓰기 권한(`s3:GetObject`, `s3:PutObject`)이 있는 IAM Role 연결, Java 21 설치
-- **AI 서버**: `POST /generate` (multipart: `melody_file`, `description`, `duration`) → WAV 응답
+- **AI 서버**: [CAU-Capstone1/AI](https://github.com/CAU-Capstone1/AI)를 Hugging Face Space(GPU)에 배포 (AWS 외부)
 
 **설정 파일 작성**
 
@@ -70,14 +70,48 @@ java -jar build/libs/HummingService-0.0.1-SNAPSHOT.jar
 
 ### 2. 로컬 환경에서 실행 (AWS 없이)
 
-Docker로 인프라를 대체해 전체 흐름(업로드 → 작곡 → 폴링 → 결과 다운로드)을 실행할 수 있습니다.
-필요한 것: Java 21, Docker
+DB와 S3는 Docker 컨테이너로 대체하고, AI 서버는 [CAU-Capstone1/AI](https://github.com/CAU-Capstone1/AI) 저장소를 그대로 로컬에서 실행해 연결합니다.
+
+필요한 것: Java 21, Docker, Python 3.10, ffmpeg
+
+```
+Spring Boot (localhost:8080, local 프로필)
+ ├──▶ MySQL 컨테이너   localhost:3307   ← RDS 대신
+ ├──▶ S3Mock 컨테이너  localhost:9090   ← S3 대신
+ └──▶ AI 서버          localhost:7860   ← Hugging Face Space 대신 (AI 저장소를 직접 실행)
+```
+
+**① AI 서버 실행** (AI 저장소, 별도 터미널)
+
+AI 저장소의 코드는 수정하지 않고 그대로 실행합니다. 아래 두 방법 중 하나를 사용합니다.
 
 ```bash
-# 1. 인프라 실행 (MySQL, S3Mock, 가짜 AI 서버)
+git clone https://github.com/CAU-Capstone1/AI.git
+cd AI
+
+# 방법 A: Docker (Hugging Face Space와 같은 환경)
+docker build -t humming-ai .
+docker run --rm -p 7860:7860 humming-ai
+
+# 방법 B: Python 가상환경
+python3.10 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 7860
+```
+
+`curl localhost:7860` 응답이 `MusicGen-Melody API running...` 이면 준비된 것입니다.
+
+> - 첫 작곡 요청 시 MusicGen-melody 모델(수 GB)을 내려받고 로딩하므로 오래 걸립니다.
+> - NVIDIA GPU가 없으면 CPU로 생성하며, 한 곡에 수 분이 걸릴 수 있습니다.
+> - AI 서버는 요청을 한 번에 하나씩 처리합니다. local 프로필은 이에 맞춰 응답 타임아웃 900초, 동시 생성 1개로 설정되어 있습니다.
+
+**② 인프라 실행 및 백엔드 실행** (Back-End 저장소)
+
+```bash
+# MySQL, S3Mock 실행
 docker compose up -d
 
-# 2. 애플리케이션 실행
+# 백엔드 실행
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
@@ -86,9 +120,9 @@ docker compose up -d
 | API | http://localhost:8080 |
 | MySQL | localhost:3307 (humming / humming) |
 | S3Mock | http://localhost:9090 (버킷 `humming-local` 자동 생성) |
-| 가짜 AI 서버 | http://localhost:8000 (3초 후 요청 길이만큼의 사인파 WAV 반환) |
+| AI 서버 | http://localhost:7860 |
 
-종료: `docker compose down` (데이터까지 삭제하려면 `docker compose down -v`)
+종료: AI 서버는 `Ctrl+C`, 인프라는 `docker compose down` (데이터까지 삭제하려면 `docker compose down -v`)
 
 **요청 흐름 예시**
 
@@ -98,6 +132,7 @@ curl -X POST localhost:8080/api/auth/register -H 'Content-Type: application/json
   -d '{"email":"test@test.com","password":"password1","name":"tester"}'
 
 # 허밍 업로드 → filePath (humming/{userId}/...)
+# 실제 녹음한 mp3를 사용해야 합니다 (AI 서버가 ffmpeg로 변환하므로 오디오가 아니면 400)
 curl -X POST localhost:8080/api/upload -H "Authorization: Bearer $TOKEN" -F file=@hum.mp3
 
 # 작곡 요청 → jobId (QUEUED로 즉시 응답)
@@ -159,18 +194,18 @@ curl localhost:8080/api/job/<jobId> -H "Authorization: Bearer $TOKEN"
 | 비동기 처리 | Spring `@Async` + 전용 `ThreadPoolTaskExecutor` |
 | 파일 저장 | AWS SDK for Java v2 (S3, S3 Presigner), Spring Cloud AWS 3.0 |
 
-**Infra (AWS)**
+**Infra (운영)**
 
 | 구분 | 기술 |
 |---|---|
 | 서버 | EC2 (IAM Role 기반 S3 접근) |
 | DB | RDS for MySQL |
 | 파일 저장소 | S3 (Presigned URL로 결과 음원 제공) |
-| AI | MusicGen 추론 서버 |
+| AI | Hugging Face Space (FastAPI, MusicGen-melody, Basic Pitch) |
 
 **Local / Test**
 
 | 구분 | 기술 |
 |---|---|
-| 로컬 인프라 | Docker Compose, MySQL 8.4, Adobe S3Mock 5.2, Python 3.12 (가짜 AI 서버) |
+| 로컬 인프라 | Docker Compose, MySQL 8.4, Adobe S3Mock 5.2 |
 | 테스트 | JUnit 5, Mockito, AssertJ, Spring Security Test, MockMvc, H2 |
