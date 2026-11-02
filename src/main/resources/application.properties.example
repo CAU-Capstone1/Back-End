@@ -37,3 +37,15 @@ logging.level.org.springframework.security.web: INFO
 # 7. 콜백 서버 설정 (AiClientHttp에서 사용)
 server.callback-host=<CALLBACK_HOST_IP>
 server.port=8080
+
+# 8. 파일 업로드 용량 (기본값 1MB → 허밍 mp3 업로드 실패 방지)
+spring.servlet.multipart.max-file-size=20MB
+spring.servlet.multipart.max-request-size=20MB
+
+# 9. AI 서버 연동 (타임아웃, 콜백 시크릿, 동시 생성 수)
+ai.connect-timeout-ms=10000
+ai.response-timeout-sec=300
+# AI 서버가 /callback 호출 시 X-Callback-Secret 헤더로 보내야 하는 값 (미설정 시 콜백 거부)
+ai.callback-secret=<CALLBACK_SECRET>
+compose.executor.pool-size=2
+compose.executor.queue-capacity=20
