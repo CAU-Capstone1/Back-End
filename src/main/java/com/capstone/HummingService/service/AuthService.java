@@ -5,6 +5,7 @@ import com.capstone.HummingService.domain.User;
 import com.capstone.HummingService.dto.request.LoginRequest;
 import com.capstone.HummingService.dto.request.RegisterRequest;
 import com.capstone.HummingService.dto.response.LoginResponse;
+import com.capstone.HummingService.dto.response.UserResponse;
 import com.capstone.HummingService.repository.UserRepository;
 import com.capstone.HummingService.support.JwtTokenProvider;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -66,6 +67,6 @@ public class AuthService {
         User userEntity = userRepository.findByUsername(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + request.getEmail()));
 
-        return new LoginResponse(accessToken, "Bearer", userEntity);
+        return new LoginResponse(accessToken, "Bearer", UserResponse.from(userEntity));
     }
 }

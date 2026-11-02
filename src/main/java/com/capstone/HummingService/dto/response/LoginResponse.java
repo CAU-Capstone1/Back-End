@@ -1,14 +1,12 @@
 package com.capstone.HummingService.dto.response;
 
-import com.capstone.HummingService.domain.User; // User 도메인 임포트
-
 public class LoginResponse {
 
     private String accessToken;
     private String tokenType;
-    private User user;
+    private UserResponse user;
 
-    public LoginResponse(String accessToken, String tokenType, User user) {
+    public LoginResponse(String accessToken, String tokenType, UserResponse user) {
         this.accessToken = accessToken;
         this.tokenType = tokenType;
         this.user = user;
@@ -22,7 +20,7 @@ public class LoginResponse {
         return tokenType;
     }
 
-    public User getUser() {
+    public UserResponse getUser() {
         return user;
     }
 }
