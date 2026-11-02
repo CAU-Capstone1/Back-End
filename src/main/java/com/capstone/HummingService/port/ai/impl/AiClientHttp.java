@@ -3,7 +3,6 @@ package com.capstone.HummingService.port.ai.impl;
 import com.capstone.HummingService.port.ai.AiClientPort;
 import com.capstone.HummingService.service.AudioService;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -13,7 +12,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.stream.Stream;
@@ -24,14 +22,6 @@ public class AiClientHttp implements AiClientPort {
     private static final Logger logger = LoggerFactory.getLogger(AiClientHttp.class);
     private final WebClient aiWebClient;
     private final AudioService audioService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Value("${server.callback-host}")
-    private String callbackHost;
-
-    @Value("${server.port}")
-    private String serverPort;
-
 
     public AiClientHttp(@Qualifier("aiWebClient") WebClient aiWebClient, AudioService audioService) {
         this.aiWebClient = aiWebClient;

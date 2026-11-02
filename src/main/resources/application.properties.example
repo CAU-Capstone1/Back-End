@@ -35,8 +35,7 @@ logging.level.org.hibernate.SQL=INFO
 logging.level.org.springframework.security: INFO
 logging.level.org.springframework.security.web: INFO
 
-# 7. 콜백 서버 설정 (AiClientHttp에서 사용)
-server.callback-host=<CALLBACK_HOST_IP>
+# 7. 서버 포트
 server.port=8080
 
 # 8. 파일 업로드 용량 (기본값 1MB → 허밍 mp3 업로드 실패 방지)
